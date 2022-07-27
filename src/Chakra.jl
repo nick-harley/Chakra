@@ -110,19 +110,19 @@ struct Att{a,T}
 end
 
 
-function agg(ps::List{Id}) where Id
+function agg(ps::List{ID}) where ID
     error("No implementation of agg.")
 end
 
-function pts(o::Obj) where Obj
+function pts(c::C) where C
     error("No implementation of pts.")
 end
 
-function geta(::Att{a,T},o::Obj) where {a,T,Obj}
+function geta(::Att{a,T},c::C) where {a,T,C}
     error("No implementation of geta.")
 end
 
-function seta(::Att{a,T},v::T,o::Obj) where {a,T,Obj}
+function seta(::Att{a,T},v::T,c::C) where {a,T,C}
     error("No implementation of seta.")
 end
 # TODO: Add properties
@@ -131,81 +131,84 @@ function emp(T::DataType)
     error("No implementation of emp.")
 end
 
-function ins(x::Id,o::Obj,s::Str) where {Id,Obj,Str}
+function ins(x::ID,c::C,h::H) where {ID,C,H}
     error("No implementation of ins.")
 end
 
-function rmv(x::Id,h::Str) where {Id,Str}
+function rmv(x::ID,h::H) where {ID,H}
     error("No implementation of rmv.")
 end
 
-function pop(h::Str) where {Str}
+function pop(h::H) where {H}
     error("No implementation of rmv.")
 end
 
-function fnd(x::Id,s::Str) where {Id,Str}
+function fnd(x::ID,h::H) where {ID,H}
     error("No implementation of fnd.")
 end
 
-function peek(s::Str) where {Str}
+function peek(h::h) where {H}
     error("No implementation of peek.")
 end
 
-function isemp(s::Str) where {Str}
+function isemp(h::h) where {H}
     error("No implementation of isemp.")
 end
-function mem(x::Id,s::Str) where {Id,Str}
+function mem(x::ID,h::H) where {ID,H}
     error("No implementation of mem.")
 end
 
-function cts(s::Str) where Str
+function cts(h::h) where H
     error("No implementation of cts.")
 end
 
-function dom(s::Str) where Str
+function dom(h::h) where H
     error("No implementation of dom.")
 end
 
 # Effects
 
-function ins!(x::Id,o::Obj,s::Str) where {Id,Obj,Str}
+function ins!(x::ID,c::C,h::H) where {ID,C,H}
     error("No implementation of insert!.")
 end
 
-function seta!(::Att{a,T},v::T,o::Obj) where {a,T,Obj}
+function seta!(::Att{a,T},v::T,c::C) where {a,T,C}
     error("No implementation of setatt!.")
 end
 
 # ADDITIONAL OPERATIONS
 
-agg(Id::DataType) = agg(Id[])
+agg(ID::DataType) = agg(ID[])
 
-pts(x,s) = obind(fnd(x,s),o->pts(o))
+pts(x,h) = obind(fnd(x,h),c->pts(c))
 
-geta(a::Symbol,o) = geta(Att(a),o)
+geta(a::Symbol,c) = geta(Att(a),c)
 
-geta(a::Symbol,x,s) = obind(fnd(x,s),o->geta(a,o))
+geta(a::Symbol,x,h) = obind(fnd(x,h),c->geta(a,c))
 
-seta(a::Symbol,v,o) = seta(Att(a),v,o)
+seta(a::Symbol,v,c) = seta(Att(a),v,c)
 
-seta!(a::Symbol,v,o) = seta!(Att(a),v,o)
+seta!(a::Symbol,v,c) = seta!(Att(a),v,c)
 
-seta(a,v,x,s) = obind(fnd(x,s),o->seta(a,v,o))
+seta(a,v,x,h) = obind(fnd(x,h),c->seta(a,v,c))
 
-seta!(a,v,x,s) = obind(fnd(x,s),o->seta!(a,v,o))
+seta!(a,v,x,h) = obind(fnd(x,h),c->seta!(a,v,c))
 
-function sequence(xs::List,s)::Option{List}
+function sequence(xs::List{ID},h::H)::Option{List{C}} where {ID,C,H}
 
     # Dereference the list of ids to get their objects
     
-    list_rec(nil(),(h,t,r)->obind(find(h,s),o->obind(r,rec->cons(o,rec))),xs)
+    list_rec(nil(C),
+             (hd,tl,rec)->obind(find(hd,h),
+                                c->obind(rec,l->cons(c,l))),
+             xs)
 end
 
-function sequenceparts(x,s)::Option{List}
+function sequenceparts(x::ID,h::H)::Option{List{C}}
 
-    # Dereference the particles of an object
+    # Dereference the particles of a constituent
 
-    obind(particles(x,s),xs->sequence(xs,s))
+    obind(pts(x,h),ps->sequence(xs,h))
     
 end
 
