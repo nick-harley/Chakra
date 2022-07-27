@@ -1,2 +1,2 @@
-# chakra-jl
+# Chakra
 Julia implementation of CHAKRA
