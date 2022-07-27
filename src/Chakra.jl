@@ -110,53 +110,89 @@ struct Att{a,T}
 end
 
 
-function delimit(ps::List{Id}) where Id
-    error("No implementation of delimit.")
-end
-function particles(o::Obj) where Obj
-    error("No implementation of particles.")
-end
-function getatt(::Att{a,T},o::Obj) where {a,T,Obj}
-    error("No implementation of getatt.")
-end
-function setatt(::Att{a,T},v::T,o::Obj) where {a,T,Obj}
-    error("No implementation of setatt.")
-end
-function empty(T::DataType)
-    error("No implementation of empty.")
-end
-function insert(x::Id,o::Obj,s::Str) where {Id,Obj,Str}
-    error("No implementation of insert.")
-end
-function find(x::Id,s::Str) where {Id,Str}
-    error("No implementation of find.")
-end
-function domain(s::Str) where Str
-    error("No implementation of domain.")
+function agg(ps::List{Id}) where Id
+    error("No implementation of agg.")
 end
 
-# Persistent structures
+function pts(o::Obj) where Obj
+    error("No implementation of pts.")
+end
 
-function insert!(x::Id,o::Obj,s::Str) where {Id,Obj,Str}
+function geta(::Att{a,T},o::Obj) where {a,T,Obj}
+    error("No implementation of geta.")
+end
+
+function seta(::Att{a,T},v::T,o::Obj) where {a,T,Obj}
+    error("No implementation of seta.")
+end
+# TODO: Add properties
+
+function emp(T::DataType)
+    error("No implementation of emp.")
+end
+
+function ins(x::Id,o::Obj,s::Str) where {Id,Obj,Str}
+    error("No implementation of ins.")
+end
+
+function rmv(x::Id,h::Str) where {Id,Str}
+    error("No implementation of rmv.")
+end
+
+function pop(h::Str) where {Str}
+    error("No implementation of rmv.")
+end
+
+function fnd(x::Id,s::Str) where {Id,Str}
+    error("No implementation of fnd.")
+end
+
+function peek(s::Str) where {Str}
+    error("No implementation of peek.")
+end
+
+function isemp(s::Str) where {Str}
+    error("No implementation of isemp.")
+end
+function mem(x::Id,s::Str) where {Id,Str}
+    error("No implementation of mem.")
+end
+
+function cts(s::Str) where Str
+    error("No implementation of cts.")
+end
+
+function dom(s::Str) where Str
+    error("No implementation of dom.")
+end
+
+# Effects
+
+function ins!(x::Id,o::Obj,s::Str) where {Id,Obj,Str}
     error("No implementation of insert!.")
 end
-function setatt!(::Att{a,T},v::T,o::Obj) where {a,T,Obj}
+
+function seta!(::Att{a,T},v::T,o::Obj) where {a,T,Obj}
     error("No implementation of setatt!.")
 end
 
 # ADDITIONAL OPERATIONS
 
-delimit(Id::DataType) = delimit(Id[])
+agg(Id::DataType) = agg(Id[])
 
-particles(x,s) = obind(find(x,s),o->particles(o))
+pts(x,s) = obind(fnd(x,s),o->pts(o))
 
-getatt(a::Symbol,o) = getatt(Att(a),o)
+geta(a::Symbol,o) = geta(Att(a),o)
 
-getatt(a::Symbol,x,s) = obind(find(x,s),o->getatt(a,o))
+geta(a::Symbol,x,s) = obind(fnd(x,s),o->geta(a,o))
 
-setatt(a::Symbol,v,o) = setatt(Att(a),v,o)
+seta(a::Symbol,v,o) = seta(Att(a),v,o)
 
-setatt!(a::Symbol,v,o) = setatt!(Att(a),v,o)
+seta!(a::Symbol,v,o) = seta!(Att(a),v,o)
+
+seta(a,v,x,s) = obind(fnd(x,s),o->seta(a,v,o))
+
+seta!(a,v,x,s) = obind(fnd(x,s),o->seta!(a,v,o))
 
 function sequence(xs::List,s)::Option{List}
 
