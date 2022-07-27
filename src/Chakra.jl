@@ -147,22 +147,22 @@ function fnd(x::ID,h::H) where {ID,H}
     error("No implementation of fnd.")
 end
 
-function peek(h::h) where {H}
+function peek(h::H) where {H}
     error("No implementation of peek.")
 end
 
-function isemp(h::h) where {H}
+function isemp(h::H) where {H}
     error("No implementation of isemp.")
 end
 function mem(x::ID,h::H) where {ID,H}
     error("No implementation of mem.")
 end
 
-function cts(h::h) where H
+function cts(h::H) where H
     error("No implementation of cts.")
 end
 
-function dom(h::h) where H
+function dom(h::H) where H
     error("No implementation of dom.")
 end
 
@@ -194,17 +194,17 @@ seta(a,v,x,h) = obind(fnd(x,h),c->seta(a,v,c))
 
 seta!(a,v,x,h) = obind(fnd(x,h),c->seta!(a,v,c))
 
-function sequence(xs::List{ID},h::H)::Option{List{C}} where {ID,C,H}
+function sequence(xs::List{ID},h::H)::Option{List} where {ID,H}
 
     # Dereference the list of ids to get their objects
     
-    list_rec(nil(C),
-             (hd,tl,rec)->obind(find(hd,h),
+    list_rec(nil(),
+             (hd,tl,rec)->obind(fnd(hd,h),
                                 c->obind(rec,l->cons(c,l))),
              xs)
 end
 
-function sequenceparts(x::ID,h::H)::Option{List{C}}
+function sequenceparts(x::ID,h::H)::Option{List} where {ID,H}
 
     # Dereference the particles of a constituent
 
