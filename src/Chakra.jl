@@ -208,7 +208,7 @@ function sequenceparts(x::ID,h::H)::Option{List} where {ID,H}
 
     # Dereference the particles of a constituent
 
-    obind(pts(x,h),ps->sequence(xs,h))
+    obind(pts(x,h),ps->sequence(ps,h))
     
 end
 
