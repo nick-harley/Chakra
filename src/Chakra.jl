@@ -113,6 +113,9 @@ struct Att{a,T}
     end
 end
 
+        
+        
+# INTERFACE FUNCTIONS        
 
 function agg(ps::List{ID}) where ID
     error("No implementation of agg.")
@@ -170,7 +173,7 @@ function dom(h::H) where H
     error("No implementation of dom.")
 end
 
-# Effects
+# IMPERATIVE OPERATION
 
 function ins!(x::ID,c::C,h::H) where {ID,C,H}
     error("No implementation of insert!.")
@@ -197,7 +200,7 @@ seta!(a::Symbol,v,c) = seta!(Att(a),v,c)
 seta(a,v,x,h) = obind(fnd(x,h),c->seta(a,v,c))
 
 seta!(a,v,x,h) = obind(fnd(x,h),c->seta!(a,v,c))
-
+                
 function sequence(xs::List{ID},h::H)::Option{List} where {ID,H}
 
     # Dereference the list of ids to get their objects
