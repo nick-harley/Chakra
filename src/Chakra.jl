@@ -10,7 +10,8 @@ export none, option_rec, omap, obind
 
 export Att
 
-export agg, pts, geta, seta, emp, ins, rmv, pop, peek, fnd, isemp, mem, dom, cts
+export agg, pts, geta, seta, getp, setp, emp, ins, rmv, pop, peek, fnd, isemp, mem, dom, cts
+export seta!, setp!, ins!, rmv!, pop!
 export sequence
 
 
@@ -92,95 +93,153 @@ end
 
 
 
+abstract type ATT{a,T} end
 
+abstract type PRP{p,T} end
+
+abstract type ID end
+
+abstract type C end
+
+abstract type H end
+
+# CONSTITUENT CONSTRUCTORS        
+
+function agg(ps::List{ID})::C
+    # agg : list ID -> C
+end 
+
+function seta(::ATT{a,T},
+              v::T,
+              c::C)::C where {a,T}
+    # forall a::A, typ a -> C -> C 
+end
+
+function setp(::PRP{p,T},
+              v::T,
+              c::C)::C where {p,T}
+    # forall p::P, T -> C -> C
+end
+
+# CONSTITUENT DESTRUCTORS
+
+function geta(::ATT{a,T},
+              c::C)::Option{T} where {a,T}
+    # forall a::A, C -> option (typ a)
+end
+
+function getp(::PRP{p,T},
+              c::C)::Option{T} where {p,T}
+    # forall p::P, C -> option (typ p)
+end
+
+function pts(c::C)::List{ID}
+    # pts : C -> list ID
+end
+
+# HIERARCHY CONSTRUCTORS
+
+function emp(::Type{H})::H
+    # emp : H
+end
+
+function ins(x::ID,
+             c::C,
+             h::H)::H
+    # ins : ID -> C -> H -> H
+end 
+
+function rmv(x::ID,
+             h::H)::H
+    # rmv : ID -> H -> H
+end
+
+function pop(h::H)::H
+    # pop : H -> H
+end
+
+# HIERARCHY DESTRUCTORS
+
+function fnd(x::ID,
+             h::H)::Option{C}
+    # fnd : ID -> H -> option C
+end
+
+function peek(h::H)::Option{Pair{ID,C}}
+    # peek : H -> option (ID * C)
+end
+
+function cts(h::H)::List{Pair{ID,C}}
+    # cts : H -> list (ID * C)
+end
+
+function dom(h::H)::List{ID}
+    # dom : H -> list ID
+end
+
+# BOOLEAN TESTS
+
+function isemp(h::H)::Bool
+    # isemp : H -> bool 
+end
+
+function mem(x::ID,
+             h::H)::Bool
+    # mem : ID -> H -> bool
+end
+
+# EFFECTFUL OPERATIONS
+
+function seta!(::ATT{a,T},
+               c::C)::C where {a,T} end
+
+function setp!(::PRP{p,T},
+               c::C)::C where {p,T} end
+
+function ins!(x::ID,
+              c::C,
+              h::H)::H end
+
+function rmv!(x::ID,
+              h::H)::H end
+
+function pop!(h::H)::Option{Pair{ID,C}} end
 
 # DEPENDENT FAMILIES
 
-__typ__(::Val{a}) where a = error("The attribute name $a has not been associated with a type.")
+__atyp__(::Val{a}) where a = error("The attribute name $a has not been associated with a type.")
 
-__typ__(n::Symbol)::DataType = __typ__(Val{n}())
+__atyp__(n::Symbol)::DataType = __atyp__(Val{n}())
 
 macro Attribute(n,T)    
-    esc(:(Chakra.__typ__(::Val{$n}) = $T))
+    esc(:(Chakra.__atyp__(::Val{$n}) = $T))
 end
 
 struct Att{a,T}
     a::Symbol
     T::DataType
     Att(a::Symbol) = begin
-        T = __typ__(a)
+        T = __atyp__(a)
         new{a,T}(a,T)
     end
 end
 
-        
-        
-# INTERFACE FUNCTIONS        
 
-function agg(ps::List{ID}) where ID
-    error("No implementation of agg.")
+__ptyp__(::Val{a}) where a = error("The property name $a has not been associated with a type.")
+
+__ptyp__(n::Symbol)::DataType = __ptyp__(Val{n}())
+
+macro Property(n,T)    
+    esc(:(Chakra.__ptyp__(::Val{$n}) = $T))
 end
 
-function pts(c::C) where C
-    error("No implementation of pts.")
-end
-
-function geta(::Att{a,T},c::C) where {a,T,C}
-    error("No implementation of geta.")
-end
-
-function seta(::Att{a,T},v::T,c::C) where {a,T,C}
-    error("No implementation of seta.")
-end
-# TODO: Add properties
-
-function emp(T::DataType)
-    error("No implementation of emp.")
-end
-
-function ins(x::ID,c::C,h::H) where {ID,C,H}
-    error("No implementation of ins.")
-end
-
-function rmv(x::ID,h::H) where {ID,H}
-    error("No implementation of rmv.")
-end
-
-function pop(h::H) where {H}
-    error("No implementation of rmv.")
-end
-
-function fnd(x::ID,h::H) where {ID,H}
-    error("No implementation of fnd.")
-end
-
-function peek(h::H) where {H}
-    error("No implementation of peek.")
-end
-
-function isemp(h::H) where {H}
-    error("No implementation of isemp.")
-end
-function mem(x::ID,h::H) where {ID,H}
-    error("No implementation of mem.")
-end
-
-function cts(h::H) where H
-    error("No implementation of cts.")
-end
-
-function dom(h::H) where H
-    error("No implementation of dom.")
-end
-
-# IMPERATIVE OPERATION
-
-function ins!(x::ID,c::C,h::H) where {ID,C,H}
-    error("No implementation of insert!.")
-end
-
-function seta!(::Att{a,T},v::T,c::C) where {a,T,C}
-    error("No implementation of setatt!.")
+struct Prp{p,T}
+    p::Symbol
+    T::DataType
+    Prp(p::Symbol) = begin
+        T = __ptyp__(p)
+        new{p,T}(p,T)
+    end
 end
 
 # ADDITIONAL OPERATIONS
@@ -220,7 +279,97 @@ function sequence(x::ID,h::H)::Option{List} where {ID,H}
 end
 
 
+# REFERENCE IMPLEMENTATION
 
+macro Reference(ID,SUBS)
+    
+    esc(quote
+
+            using DataStructures
+            
+            struct Id
+                value::($ID)
+            end
+
+            DOMAIN = Union{Id,[m.Id for m in $SUBS]...}
+            
+            struct Constituent
+                attributes::Dict{Symbol,Any}
+                properties::Dict{Symbol,Any}
+                particles::List{DOMAIN}
+            end
+
+            struct Hierarchy
+                constituents::OrderedDict{Id,Constituent}
+            end
+
+            c(ps) = Constituent(Dict{Symbol,Any}(),Dict{Symbol,Any}(),ps)
+            c() = c(DOMAIN[])
+            copy(c::Constituent) = Constituent(Dict{Symbol,Any}(c.attributes...),
+                                               Dict{Symbol,Any}(c.properties...),
+                                               [c.particles...])
+            copy(h::Hierarchy) = Hierarchy(OrderedDict{Id,Constituent}(h.constituents...))
+
+            Chakra.agg(ps::List{DOMAIN}) = c(ps)
+
+            Chakra.seta(::Att{a,T},v::T,c::Constituent) where {a,T} = begin
+                Constituent(Dict{Symbol,Any}(c.attributes..., a => v),
+                            Dict{Symbol,Any}(c.properties...),
+                            c.particles)
+            end
+
+            Chakra.setp(::Prp{p,T},v::T,c::Constituent) where {p,T} = begin
+                Constituent(Dict{Symbol,Any}(c.attributes...),
+                            Dict{Symbol,Any}(c.properties..., p => v),
+                            c.particles)
+            end
+
+            Chakra.pts(c::Constituent) = c.particles
+
+            Chakra.geta(::Att{a,T},c::Constituent) where {a,T} = Base.get(c.attributes,a,none)
+
+            Chakra.getp(::Prp{p,T},c::Constituent) where {p,T} = Base.get(c.properties,p,none)
+
+            Chakra.emp(::Type{Hierarchy}) = Hierarchy(OrderedDict{Id,Constituent}())
+
+            Chakra.ins(x::Id,c::Constituent,h::Hierarchy) = begin
+                Hierarchy(OrderedDict{Id,Constitutent}(h.constituents..., x => c))
+            end
+
+            Chakra.rmv(x::Id,h::Hierarchy) = Hierarchy(delete!(OrderedDict{Id,Constituent}(n.constituents),x))
+            
+            Chakra.pop(h::Hierarchy) = Hierarchy(OrderedDict{Id,Constituent}(collect(h.constituents)[1:end-1]))
+
+            Chakra.fnd(x::Id,h::Hierarchy) = Base.get(h.constituents,x,none)
+            
+            Chakra.peek(h::Hierarchy) = isempty(h.constituents) ? none : collect(h.constituents)[end]
+
+            Chakra.isemp(h::Hierarchy) = isempty(h.constituents)
+
+            Chakra.mem(x::Id,h::Hierarchy) = haskey(h.constituents,x)
+
+            Chakra.cts(h::Hierarchy) = collect(h.constituents)
+
+            Chakra.dom(h::Hierarchy) = collect(keys(h.constituents))
+
+            Chakra.ins!(x::Id,c::Constituent,h::Hierarchy) = h.constituents[x] = c
+
+            Chakra.seta!(::Att{a,T},v::T,c::Constituent) where {a,T} = c.attribtues[a] = v
+
+            Chakra.setp!(::Prp{p,T},v::T,c::Constituent) where {p,T} = c.properties[p] = v
+
+            Chakra.rmv!(x::Id,h::Hierarchy) = delete!(h.constituents,x)
+
+            Chakra.pop!(h::Hierarchy) = delete!()
+
+        end)
+end
+
+
+
+
+
+# VIEWPOINTS
 
 abstract type Viewpoint{T} end
 
@@ -311,12 +460,11 @@ delay(v::Viewpoint,l::Int) = DelayedViewpoint(v,l)
 
 thread(b::Viewpoint,t::Viewpoint) = ThreadedViewpoint(b,t)
 
-
-
 # Additional viewpoint constructors
 
 diff(v::Viewpoint{T}) where T = compose(link(v,delay(v,1)),(x,y)->x-y)
 
+# isdiffable(v::Viewpoint{T}) where T = TODO : how to check whether T has a "-"
 
 
 
