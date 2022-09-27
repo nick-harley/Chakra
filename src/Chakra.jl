@@ -8,7 +8,7 @@ export Option
 export none, option_rec, omap, obind
 
 
-export Att
+export Att, Prp
 
 export agg, pts, geta, seta, getp, setp, emp, ins, rmv, pop, peek, fnd, isemp, mem, dom, cts
 export seta!, setp!, ins!, rmv!, pop!
