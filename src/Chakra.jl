@@ -333,7 +333,7 @@ macro Reference(ID,SUBS)
             Chakra.emp(::Type{Hierarchy}) = Hierarchy(OrderedDict{Id,Constituent}())
 
             Chakra.ins(x::Id,c::Constituent,h::Hierarchy) = begin
-                Hierarchy(OrderedDict{Id,Constitutent}(h.constituents..., x => c))
+                Hierarchy(OrderedDict{Id,Constituent}(h.constituents..., x => c))
             end
 
             Chakra.rmv(x::Id,h::Hierarchy) = Hierarchy(delete!(OrderedDict{Id,Constituent}(n.constituents),x))
