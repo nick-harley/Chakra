@@ -252,6 +252,10 @@ geta(a::Symbol,c) = geta(Att(a),c)
 
 geta(a::Symbol,x,h) = obind(fnd(x,h),c->geta(a,c))
 
+getp(p::Symbol,c) = getp(Prp(p),c)
+
+getp(p::Symbol,x,h) = obing(fnd(x,h),c->getp(p,c))
+
 seta(a::Symbol,v,c) = seta(Att(a),v,c)
 
 seta!(a::Symbol,v,c) = seta!(Att(a),v,c)
@@ -259,7 +263,15 @@ seta!(a::Symbol,v,c) = seta!(Att(a),v,c)
 seta(a,v,x,h) = obind(fnd(x,h),c->seta(a,v,c))
 
 seta!(a,v,x,h) = obind(fnd(x,h),c->seta!(a,v,c))
-                
+
+setp(p::Symbol,v,c) = setp(Prp(p),v,c)
+
+setp(p,v,x,h) = obind(fnd(x,h),c->setp(p,v,c))
+
+setp!(p::Symbol,v,c) = setp!(Prp(p),v,c)
+
+setp!(p,v,x,h) = obing(fnd(x,h),c->setp!(p,v,c))
+
 function sequence(xs::List{ID},h::H)::Option{List} where {ID,H}
 
     # Dereference the list of ids to get their objects
@@ -348,9 +360,9 @@ macro Reference(ID,SUBS)
 
             Chakra.mem(x::Id,h::Hierarchy) = haskey(h.constituents,x)
 
-            Chakra.cts(h::Hierarchy) = collect(h.constituents)
+            Chakra.cts(h::Hierarchy) = reverse(collect(h.constituents))
 
-            Chakra.dom(h::Hierarchy) = collect(keys(h.constituents))
+            Chakra.dom(h::Hierarchy) = reverse(collect(keys(h.constituents)))
 
             Chakra.ins!(x::Id,c::Constituent,h::Hierarchy) = h.constituents[x] = c
 
