@@ -207,68 +207,33 @@ function pop!(h::H)::Option{Pair{ID,C}} end
 
 # DEPENDENT FAMILIES
 
-__atyp__(::Val{a}) where a = error("The attribute name $a has not been associated with a type.")
-
-__atyp__(n::Symbol)::DataType = __atyp__(Val{n}())
-
-macro Attribute(n,T)    
-    esc(:(Chakra.__atyp__(::Val{$n}) = $T))
-end
-
-struct Att{a,T}
-    a::Symbol
-    T::DataType
-    Att(a::Symbol) = begin
-        T = __atyp__(a)
-        new{a,T}(a,T)
-    end
-end
-
-
-__ptyp__(::Val{a}) where a = error("The property name $a has not been associated with a type.")
-
-__ptyp__(n::Symbol)::DataType = __ptyp__(Val{n}())
-
-macro Property(n,T)    
-    esc(:(Chakra.__ptyp__(::Val{$n}) = $T))
-end
-
-struct Prp{p,T}
-    p::Symbol
-    T::DataType
-    Prp(p::Symbol) = begin
-        T = __ptyp__(p)
-        new{p,T}(p,T)
-    end
-end
-
 # ADDITIONAL OPERATIONS
 
-agg(ID::DataType) = agg(ID[])
+agg(ID::Type) = agg(ID[])
+
+agg(m::Module) = agg(m.DOMAIN)
+
+agg() = (println(@__MODULE__); agg(@__MODULE__))
 
 pts(x,h) = obind(fnd(x,h),c->pts(c))
 
-geta(a::Symbol,c) = geta(Att(a),c)
-
 geta(a::Symbol,x,h) = obind(fnd(x,h),c->geta(a,c))
-
-getp(p::Symbol,c) = getp(Prp(p),c)
 
 getp(p::Symbol,x,h) = obing(fnd(x,h),c->getp(p,c))
 
-seta(a::Symbol,v,c) = seta(Att(a),v,c)
+#seta(a::Symbol,v,c) = seta(Att(a),v,c)
 
-seta!(a::Symbol,v,c) = seta!(Att(a),v,c)
+#seta!(a::Symbol,v,c) = seta!(Att(a),v,c)
 
 seta(a,v,x,h) = obind(fnd(x,h),c->seta(a,v,c))
 
 seta!(a,v,x,h) = obind(fnd(x,h),c->seta!(a,v,c))
 
-setp(p::Symbol,v,c) = setp(Prp(p),v,c)
+#setp(p::Symbol,v,c) = setp(Prp(p),v,c)
 
 setp(p,v,x,h) = obind(fnd(x,h),c->setp(p,v,c))
 
-setp!(p::Symbol,v,c) = setp!(Prp(p),v,c)
+#setp!(p::Symbol,v,c) = setp!(Prp(p),v,c)
 
 setp!(p,v,x,h) = obing(fnd(x,h),c->setp!(p,v,c))
 
@@ -290,7 +255,6 @@ function sequence(x::ID,h::H)::Option{List} where {ID,H}
     
 end
 
-
 # REFERENCE IMPLEMENTATION
 
 macro Reference(ID,SUBS)
@@ -304,75 +268,166 @@ macro Reference(ID,SUBS)
             end
 
             DOMAIN = Union{Id,[m.Id for m in $SUBS]...}
+
+            Ps = Dict{Symbol,Any}
+            As = Dict{Symbol,Any}
             
             struct Constituent
-                attributes::Dict{Symbol,Any}
-                properties::Dict{Symbol,Any}
+                attributes::As
+                properties::Ps
                 particles::List{DOMAIN}
             end
 
+            Cs = OrderedDict{Id,Constituent}
+            
             struct Hierarchy
-                constituents::OrderedDict{Id,Constituent}
+                constituents::Cs
             end
 
-            c(ps) = Constituent(Dict{Symbol,Any}(),Dict{Symbol,Any}(),ps)
-            c() = c(DOMAIN[])
-            copy(c::Constituent) = Constituent(Dict{Symbol,Any}(c.attributes...),
-                                               Dict{Symbol,Any}(c.properties...),
-                                               [c.particles...])
-            copy(h::Hierarchy) = Hierarchy(OrderedDict{Id,Constituent}(h.constituents...))
-
-            Chakra.agg(ps::List{DOMAIN}) = c(ps)
-
-            Chakra.seta(::Att{a,T},v::T,c::Constituent) where {a,T} = begin
-                Constituent(Dict{Symbol,Any}(c.attributes..., a => v),
-                            Dict{Symbol,Any}(c.properties...),
-                            c.particles)
-            end
-
-            Chakra.setp(::Prp{p,T},v::T,c::Constituent) where {p,T} = begin
-                Constituent(Dict{Symbol,Any}(c.attributes...),
-                            Dict{Symbol,Any}(c.properties..., p => v),
-                            c.particles)
-            end
-
-            Chakra.pts(c::Constituent) = c.particles
-
-            Chakra.geta(::Att{a,T},c::Constituent) where {a,T} = Base.get(c.attributes,a,none)
-
-            Chakra.getp(::Prp{p,T},c::Constituent) where {p,T} = Base.get(c.properties,p,none)
-
-            Chakra.emp(::Type{Hierarchy}) = Hierarchy(OrderedDict{Id,Constituent}())
-
-            Chakra.ins(x::Id,c::Constituent,h::Hierarchy) = begin
-                Hierarchy(OrderedDict{Id,Constituent}(h.constituents..., x => c))
-            end
-
-            Chakra.rmv(x::Id,h::Hierarchy) = Hierarchy(delete!(OrderedDict{Id,Constituent}(n.constituents),x))
+            mod = @__MODULE__
             
-            Chakra.pop(h::Hierarchy) = Hierarchy(OrderedDict{Id,Constituent}(collect(h.constituents)[1:end-1]))
+            struct AttName{a}
+                AttName(a::Symbol) = new{a}()
+            end
 
-            Chakra.fnd(x::Id,h::Hierarchy) = Base.get(h.constituents,x,none)
+            __atyp__(::AttName{a}) where a =
+                error("Attribute $a is not defined in module $mod.")
+
+            __atyp__(a::Symbol)::DataType = __atyp__(AttName(a))
+
+            macro DefineAtt(a,T)    
+                esc(:(__atyp__(::AttName{$a}) = $T))
+            end
+
+            struct Att{a,T}
+                a::Symbol
+                T::DataType
+                Att(a::Symbol) = begin
+                    T = __atyp__(a)
+                    new{a,T}(a,T)
+                end
+            end
+
+            struct PrpName{a}
+                PrpName(a::Symbol) = new{a}()
+            end
+
+            __ptyp__(::PrpName{p}) where p =
+                error("Property $p is not defined in module $mod.")
+
+            __ptyp__(p::Symbol)::DataType = __ptyp__(PrpName(p))
+
+            macro DefinePrp(p,T)    
+                esc(:(__ptyp__(::PrpName{$p}) = $T))
+            end
+
+            struct Prp{p,T}
+                p::Symbol
+                T::DataType
+                Prp(p::Symbol) = begin
+                    T = __ptyp__(p)
+                    new{p,T}(p,T)
+                end
+            end
+
+
             
-            Chakra.peek(h::Hierarchy) = isempty(h.constituents) ? none : collect(h.constituents)[end]
+            Chakra.agg(ps::List{DOMAIN}) =
+                Constituent(As(),Ps(),ps)
 
-            Chakra.isemp(h::Hierarchy) = isempty(h.constituents)
+            Chakra.seta(::Att{a,T},
+                        v::T,
+                        c::Constituent) where {a,T} =
+                            Constituent(As(c.attributes...,a=>v),
+                                        Ps(c.properties),
+                                        c.particles)
 
-            Chakra.mem(x::Id,h::Hierarchy) = haskey(h.constituents,x)
+            Chakra.seta(a::Symbol,v,c) = Chakra.seta(Att(a),v,c)
+            
+            Chakra.setp(::Prp{p,T},
+                        v::T,
+                        c::Constituent) where {p,T} =
+                            Constituent(As(c.attributes),
+                                        Ps(c.properties...,p=>v),
+                                        c.particles)
 
-            Chakra.cts(h::Hierarchy) = reverse(collect(h.constituents))
+            Chakra.setp(p::Symbol,v,c) =
+                Chakra.setp(Prp(p),v,c)
+            
+            Chakra.pts(c::Constituent)::List{DOMAIN} =
+                c.particles
 
-            Chakra.dom(h::Hierarchy) = reverse(collect(keys(h.constituents)))
+            Chakra.geta(::Att{a,T},
+                        c::Constituent) where {a,T} =
+                            Base.get(c.attributes,a,none)
 
-            Chakra.ins!(x::Id,c::Constituent,h::Hierarchy) = h.constituents[x] = c
+            Chakra.geta(a::Symbol,
+                        c::Constituent) =
+                            Chakra.geta(Att(a),c)
+            
+            Chakra.getp(::Prp{p,T},
+                        c::Constituent) where {p,T} =
+                            Base.get(c.properties,p,none)
 
-            Chakra.seta!(::Att{a,T},v::T,c::Constituent) where {a,T} = c.attribtues[a] = v
+            Chakra.getp(p::Symbol,
+                        c::Constituent) =
+                            Chakra.getp(Prp(p),c)
+            
+            Chakra.emp(::Type{Hierarchy})::Hierarchy =
+                Hierarchy(Cs())
 
-            Chakra.setp!(::Prp{p,T},v::T,c::Constituent) where {p,T} = c.properties[p] = v
+            Chakra.ins(x::Id,
+                       c::Constituent,
+                       h::Hierarchy)::Hierarchy =
+                           Hierarchy(Cs(h.constituents..., x => c))
 
-            Chakra.rmv!(x::Id,h::Hierarchy) = delete!(h.constituents,x)
+            Chakra.rmv(x::Id,
+                       h::Hierarchy)::Hierarchy =
+                           Hierarchy(delete!(Cs(h.constituents),x))
+            
+            Chakra.pop(h::Hierarchy)::Hierarchy =
+                Hierarchy(Cs(collect(h.constituents)[1:end-1]))
 
-            Chakra.pop!(h::Hierarchy) = delete!()
+            Chakra.fnd(x::Id,
+                       h::Hierarchy)::Option{Constituent} =
+                           Base.get(h.constituents,x,none)
+            
+            Chakra.peek(h::Hierarchy)::Option{Pair{Id,Constituent}} =
+                isempty(h.constituents) ? none : collect(h.constituents)[end]
+
+            Chakra.isemp(h::Hierarchy)::Bool =
+                isempty(h.constituents)
+
+            Chakra.mem(x::Id,h::Hierarchy)::Bool =
+                haskey(h.constituents,x)
+
+            Chakra.cts(h::Hierarchy)::List{Pair{Id,Constituent}} =
+                reverse(collect(h.constituents))
+
+            Chakra.dom(h::Hierarchy)::List{Id} =
+                reverse(collect(keys(h.constituents)))
+
+            Chakra.ins!(x::Id,
+                        c::Constituent,
+                        h::Hierarchy) =
+                            h.constituents[x] = c
+
+            Chakra.seta!(::Att{a,T},
+                         v::T,
+                         c::Constituent) where {a,T} =
+                             c.attribtues[a] = v
+
+            Chakra.setp!(::Prp{p,T},
+                         v::T,
+                         c::Constituent) where {p,T} =
+                             c.properties[p] = v
+
+            Chakra.rmv!(x::Id,
+                        h::Hierarchy) =
+                            delete!(h.constituents,x)
+
+            Chakra.pop!(h::Hierarchy) =
+                delete!(h.constituents,first(peek(h)))
 
         end)
 end
