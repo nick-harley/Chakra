@@ -6,4 +6,4 @@ Install:
 
 Introduction: <https://nick-harley.github.io/Chakra/>
 
-Demonstration: <https://nbviewer.org/github/nick-harley/Chakra/blob/main/Chakra.ipynb>
+Demonstration: <https://nbviewer.org/github/nick-harley/Chakra/blob/main/DataIntegration.ipynb>
