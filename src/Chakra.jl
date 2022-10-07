@@ -609,7 +609,7 @@ end
 
 # Viewpoint constructor interface
 
-vp(x::Symbol) = AtomicViewpoint(x)
+vp(x::Attribute) = AtomicViewpoint(x)
 
 link(v1::Viewpoint,v2::Viewpoint,vs::Viewpoint...) = LinkedViewpoint(v1,v2,vs...)
 
