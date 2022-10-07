@@ -280,11 +280,19 @@ function pop!(h::Hierarchy)::Option{Pair{Id,Constituent}} end
 
 agg(Id::Type) = agg(Id[])
 
-agg(m::Module) = agg(m.DOMAIN)
+#agg(m::Module) = agg(m.DOMAIN)
 
-agg() = (println(@__MODULE__); agg(@__MODULE__))
+#agg() = (println(@__MODULE__); agg(@__MODULE__))
 
-pts(x,h) = obind(fnd(x,h),c->pts(c))
+fnd(x::Id,m::Module) = fnd(x,m.__data__)
+
+pts(x::Id,h) = obind(fnd(x,h),c->pts(c))
+
+dom(m::Module) = dom(m.__data__)
+
+cts(m::Module) = dom(m.__data__)
+
+peek(m::Module) = peek(m.__data__)
 
 geta(a::Symbol,c) = geta(__attributes__(a),c)
 
@@ -333,6 +341,8 @@ function sequence(x::Id,h::Hierarchy)::Option{List}
     
 end
 
+sequence(x,m::Module) = sequence(x,m.__data__)
+
 # REFERENCE IMPLEMENTATION
 
 macro Reference(Id,SUBS=[])
@@ -343,7 +353,7 @@ macro Reference(Id,SUBS=[])
                 value::($Id)
             end
 
-            #submods = [eval(s) for s in $SUBS]                
+            #submods = [eval(s) for s in $SUBS]             
             ID_TYPES = Union{Id,[s.ID_TYPES for s in $SUBS]...}
             
             As = Dict{Symbol,Any}
@@ -464,7 +474,7 @@ macro Reference(Id,SUBS=[])
                            Base.get(h.constituents,x,none)
 
             for S in $SUBS
-                eval(:(Chakra.fnd(x::$S.Id,h::Hierarchy)::$S.Constituent = fnd(x,$S.data)))
+                eval(:(Chakra.fnd(x::$S.Id,h::Hierarchy)::$S.Constituent = fnd(x,$S.__data__)))
             end
             
             Chakra.peek(h::Hierarchy)::Option{Pair{ID_TYPES,C_TYPES}} =
@@ -477,14 +487,14 @@ macro Reference(Id,SUBS=[])
                 haskey(h.constituents,x)
 
             for S in $SUBS
-                eval(:(Chakra.mem(x::$S.Id,h::Hierarchy)::Bool = mem(x,$S.data)))
+                eval(:(Chakra.mem(x::$S.Id,h::Hierarchy)::Bool = mem(x,$S.__data__)))
             end
             
             Chakra.cts(h::Hierarchy)::List{Pair{ID_TYPES,C_TYPES}} =
-                vcat(reverse(collect(h.constituents)),[cts(S.data) for S in reverse($SUBS)]...)
+                vcat(reverse(collect(h.constituents)),[cts(S.__data__) for S in reverse($SUBS)]...)
 
             Chakra.dom(h::Hierarchy)::List{ID_TYPES} =
-                vcat(reverse(collect(keys(h.constituents))),[dom(S.data) for S in reverse($SUBS)]...)
+                vcat(reverse(collect(keys(h.constituents))),[dom(S.__data__) for S in reverse($SUBS)]...)
 
             Chakra.ins!(x::Id,
                         c::Constituent,
@@ -511,7 +521,9 @@ macro Reference(Id,SUBS=[])
         end)
 end
 
-
+function isdatasource(m::Module)
+    isdefined(m,:__data__) && m.__data__ isa Hierarchy
+end
 
 
 # VIEWPOINTS
