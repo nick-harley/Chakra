@@ -491,28 +491,6 @@ macro Reference(Id,SUBS=[])
             Chakra.dom(h::Hierarchy)::List{ID_TYPES} =
                 vcat(reverse(collect(keys(h.constituents))),[dom(S.__data__) for S in reverse($SUBS)]...)
 
-            Chakra.ins!(x::Id,
-                        c::Constituent,
-                        h::Hierarchy) =
-                            h.constituents[x] = c
-
-            Chakra.seta!(::Attribute{a,T},
-                         v::T,
-                         c::Constituent) where {a,T} =
-                             c.attribtues[a] = v
-
-            Chakra.setp!(::Property{p,T},
-                         v::T,
-                         c::Constituent) where {p,T} =
-                             c.properties[p] = v
-
-            Chakra.rmv!(x::Id,
-                        h::Hierarchy) =
-                            delete!(h.constituents,x)
-
-            Chakra.pop!(h::Hierarchy) =
-                delete!(h.constituents,first(peek(h)))
-
         end)
 end
 
