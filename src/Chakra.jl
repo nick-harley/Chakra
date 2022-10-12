@@ -280,9 +280,7 @@ function pop!(h::Hierarchy)::Option{Pair{Id,Constituent}} end
 
 agg(::Type{T}) where {T<:Id} = agg(T[])
 
-agg(m::Module) = agg(m.ID_TYPES)
-
-agg(::Type{T}) where {T<:Id} = agg(T[])
+agg(ps::Vector{Id}) = agg(Union{typeof.(ps)...}[ps...])
 
 fnd(x::Id,m::Module) = fnd(x,m.__data__)
 
@@ -348,12 +346,11 @@ macro Reference(Id,SUBS=[])
                 value::($Id)
             end
 
-            #submods = [eval(s) for s in $SUBS]             
-            ID_TYPES = Union{Id,[s.ID_TYPES for s in $SUBS]...}
+            __IDS__ = Union{Id,[s.__IDS__ for s in $SUBS]...}
             
             As = Dict{Symbol,Any}
             Ps = Dict{Symbol,Any}
-            Parts = List{ID_TYPES}
+            Parts = List{__IDS__}
             
             struct Constituent <: Chakra.Constituent
                 attributes::As
@@ -361,7 +358,7 @@ macro Reference(Id,SUBS=[])
                 particles::Parts
             end
 
-            C_TYPES = Union{Constituent,[s.C_TYPES for s in $SUBS]...}
+            __CS__ = Union{Constituent,[s.__CS__ for s in $SUBS]...}
 
             using DataStructures
 
@@ -401,16 +398,16 @@ macro Reference(Id,SUBS=[])
 
             macro DefineProperty(p,T)    
                 esc(quote
-                        __properties__(::Val{$p}) = $T
-                        g = Symbol(@__MODULE__,".",$p)
+                        mod.__properties__(::Val{$p}) = $T
+                        g = Symbol(mod,".",$p)
                         Chakra.__properties__(::Val{g}) = Property($p)
                     end)
             end
             
-            Chakra.agg(ps::List{T}) where T<:ID_TYPES =
+            Chakra.agg(ps::List{T}) where T<:__IDS__ =
                 Constituent(As(),Ps(),ps)
 
-            Chakra.agg(::Type{Constituent}) = agg(ID_TYPES[])
+            Chakra.agg(::Type{Constituent}) = agg(__IDS__[])
 
             Chakra.seta(::Attribute{a,T},
                         v::T,
@@ -430,7 +427,7 @@ macro Reference(Id,SUBS=[])
 
             Chakra.setp(p::Symbol,v,c) = Chakra.setp(Property(p),v,c)
             
-            Chakra.pts(c::Constituent)::List{ID_TYPES} =
+            Chakra.pts(c::Constituent)::List{__IDS__} =
                 c.particles
 
             Chakra.geta(::Attribute{a,T},
@@ -472,7 +469,7 @@ macro Reference(Id,SUBS=[])
                 eval(:(Chakra.fnd(x::$S.Id,h::Hierarchy)::$S.Constituent = fnd(x,$S.__data__)))
             end
             
-            Chakra.peek(h::Hierarchy)::Option{Pair{ID_TYPES,C_TYPES}} =
+            Chakra.peek(h::Hierarchy)::Option{Pair{__IDS__,__CS__}} =
                 cts(h)[1]
 
             Chakra.isemp(h::Hierarchy)::Bool =
@@ -485,10 +482,10 @@ macro Reference(Id,SUBS=[])
                 eval(:(Chakra.mem(x::$S.Id,h::Hierarchy)::Bool = mem(x,$S.__data__)))
             end
             
-            Chakra.cts(h::Hierarchy)::List{Pair{ID_TYPES,C_TYPES}} =
+            Chakra.cts(h::Hierarchy)::List{Pair{__IDS__,__CS__}} =
                 vcat(reverse(collect(h.constituents)),[cts(S.__data__) for S in reverse($SUBS)]...)
 
-            Chakra.dom(h::Hierarchy)::List{ID_TYPES} =
+            Chakra.dom(h::Hierarchy)::List{__IDS__} =
                 vcat(reverse(collect(keys(h.constituents))),[dom(S.__data__) for S in reverse($SUBS)]...)
 
         end)
