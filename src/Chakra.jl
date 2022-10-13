@@ -9,7 +9,6 @@ export none, option_rec, omap, obind
 
 
 export agg, pts, geta, seta, getp, setp, emp, ins, rmv, pop, peek, fnd, isemp, mem, dom, cts
-export seta!, setp!, ins!, rmv!, pop!
 export sequence
 
 
@@ -48,7 +47,7 @@ nil() = Any[]
 cons(h::T,t::List{T}) where T = T[h,t...]
 isnil(l::List) = isempty(l)
 
-function list_rec(pnil,pcons::Function,x::Vector) where T 
+function list_rec(::Type{T},pnil::T,pcons::Function,x::Vector{E})::T where {T,E} 
     function F(l)
         isnil(l) ? pnil : pcons(l[1],l[2:end],F(l[2:end]))
     end
@@ -56,31 +55,31 @@ function list_rec(pnil,pcons::Function,x::Vector) where T
 end
 
 function gethead(l::List{A})::Option{A} where A 
-    list_rec(none,(h,t,r)->h,l)
+    list_rec(Option{A},none,(h,t,r)->h,l)
 end
 function gettail(l::List{A})::List{A} where A
-    list_rec(nil(A),(h,t,r)->t,l)
+    list_rec(List{A},nil(A),(h,t,r)->t,l)
 end
 function append(l1::List{A},l2::List{A})::List{A} where A
-    list_rec(l2,(h,t,r)->cons(h,r),l1)
+    list_rec(List{A},l2,(h,t,r)->cons(h,r),l1)
 end
-function lmap(f::Function,l::List{A})::List where A
-    list_rec(nil(),(h,t,r)->cons(f(h),r),l)
+function lmap(f::Function,l::List{A})::List{B} where {A,B}
+    list_rec(List{B},nil(B),(h,t,r)->cons(f(h),r),l)
 end
 function ljoin(ll::List{List{A}})::List{A} where A
-    list_rec(nil(A),(h,t,r)->append(h,r),ll)
+    list_rec(List{A},nil(A),(h,t,r)->append(h,r),ll)
 end
 function lpush(l::List{A},x::A)::List{A} where A
-    list_rec(cons(x,nil(A)),(h,t,r)->cons(h,r),l)
+    list_rec(List{A},cons(x,nil(A)),(h,t,r)->cons(h,r),l)
 end
 function lpop(l::List{A})::List{A} where A
-    list_rec(nil(A),(h,t,r)->isnil(t) ? r : cons(h,r),l)
+    list_rec(List{A},nil(A),(h,t,r)->isnil(t) ? r : cons(h,r),l)
 end
 function lpopn(l::List{A},n::Int)::List{A} where A
     n <= 0 ? l : lpopn(lpop(l),n-1)
 end
 function lpeek(l::List{A})::Option{A} where A
-    list_rec(none,(h,t,r)->isnil(t) ? h : r,l)
+    list_rec(Option{A},none,(h,t,r)->isnil(t) ? h : r,l)
 end
 function lpeekn(l::List{A},n::Int)::Option{A} where A
     lpeek(lpopn(l,n))
@@ -90,8 +89,7 @@ end
 
 
 
-
-
+# ABSTRACT TYPES
 
 abstract type Id end
 
@@ -103,6 +101,10 @@ abstract type Attribute{a,T} end
 
 abstract type Property{p,T} end
 
+
+
+
+# GLOBAL ATTRIBUTES AND PROPERTIES
 
 function __attributes__(::Val{n})::Attribute{n} where n
     error("Name $n is not defined globally.")
@@ -120,12 +122,20 @@ __properties__(n::String) = __properties__(Symbol(n))
 
 
 
-# CONSTITUENT CONSTRUCTORS        
+# ERROR FUNCTION        
 
 function Error(name,TS...)
     type_string = string(join(string.(typeof.(TS[1:end-1]))," -> ")," -> ",TS[end])
     error(string("No method implementation of $name : ", type_string, ". \n $(methods(name))"))
 end
+
+
+
+
+# ABSTRACT OPERTIONS
+
+
+## Constituent constructors 
 
 function agg(ps::List{T})::Constituent where {T<:Id}
 
@@ -153,7 +163,8 @@ function setp(p::Property{N,T},
     Error(setp,p,v,c,Constituent)
 end
 
-# CONSTITUENT DESTRUCTORS
+
+## Constituent destructors
 
 function geta(a::Attribute{N,T},
               c::Constituent)::Option{T} where {N,T}
@@ -178,7 +189,8 @@ function pts(c::Constituent)::List{Id}
     Error(pts,c,List{Id})
 end
 
-# HIERARCHY CONSTRUCTORS
+
+## Hierarchy constructors
 
 function emp(::Type{Hierarchy})::Hierarchy
 
@@ -211,7 +223,8 @@ function pop(h::Hierarchy)::Hierarchy
     Error(pop,h,Hierarchy)
 end
 
-# HIERARCHY DESTRUCTORS
+
+## Hierarchy destructors
 
 function fnd(x::Id,
              h::Hierarchy)::Option{Constituent}
@@ -242,7 +255,8 @@ function dom(h::Hierarchy)::List{Id}
     Error(dom,h,List{Id})
 end
 
-# BOOLEAN TESTS
+
+## Boolean tests
 
 function isemp(h::Hierarchy)::Bool
     
@@ -259,42 +273,26 @@ function mem(x::Id,
     Error(mem,x,h,Bool)
 end
 
-# EFFECTFUL OPERATIONS
 
-function seta!(::Attribute{a,T},
-               c::Constituent)::Constituent where {a,T} end
 
-function setp!(::Property{p,T},
-               c::Constituent)::Constituent where {p,T} end
+# ADDITIONAL METHODS
 
-function ins!(x::Id,
-              c::Constituent,
-              h::Hierarchy)::Hierarchy end
 
-function rmv!(x::Id,
-              h::Hierarchy)::Hierarchy end
-
-function pop!(h::Hierarchy)::Option{Pair{Id,Constituent}} end
-
-# ADDITIONAL OPERATIONS
-
+# constituent constructors
 agg(::Type{T}) where {T<:Id} = agg(T[])
 
 agg(ps::Vector{Id}) = agg(Union{typeof.(ps)...}[ps...])
 
-fnd(x::Id,m::Module) = fnd(x,m.__data__)
+seta(a::String,v,c::Constituent) = seta(__attributes__(a),v,c)
 
+setp(p::String,v,c::Constituent) = setp(__properties__(p),v,c)
+
+seta(a,v,x,h) = obind(fnd(x,h),c->seta(a,v,c))
+
+setp(p,v,x,h) = obind(fnd(x,h),c->setp(p,v,c))
+
+# constituent destructors
 pts(x::Id,h) = obind(fnd(x,h),c->pts(c))
-
-dom(m::Module) = dom(m.__data__)
-
-cts(m::Module) = cts(m.__data__)
-
-peek(m::Module) = peek(m.__data__)
-
-#geta(a::Symbol,c) = geta(__attributes__(a),c)
-
-#getp(p::Symbol,c) = getp(__properties__(p),c)
 
 geta(a::String,c::Constituent) = geta(__attributes__(a),c)
 
@@ -304,29 +302,32 @@ geta(a,x::Id,h) = obind(fnd(x,h),c->geta(a,c))
 
 getp(p,x::Id,h) = obing(fnd(x,h),c->getp(p,c))
 
-#seta(a::Symbol,v,c::Constituent) = seta(__attributes__(a),v,c)
+# hierarchy destructors
+fnd(x::Id,m::Module) = fnd(x,m.__data__)
 
-#setp(p::Symbol,v,c::Constituent) = setp(__properties__(p),v,c)
+dom(m::Module) = dom(m.__data__)
 
-seta(a::String,v,c::Constituent) = seta(__attributes__(a),v,c)
+cts(m::Module) = cts(m.__data__)
 
-setp(p::String,v,c::Constituent) = setp(__properties__(p),v,c)
+peek(m::Module) = peek(m.__data__)
 
-#seta(a,v,x::Id,h::Hierarchy) = obind(fnd(x,h),c->seta(a,v,c))
+# boolean tests
+mem(x,m::Module) = mem(x,m.__data__)
 
-#setp(p,v,x::Id,h::Hierarchy) = obind(fnd(x,h),c->setp(p,v,c))
+isemp(m::Module) = isemp(m.__data__)
 
-function sequence(xs::List{X},h::Hierarchy)::Option{List} where {X<:Id}
+# mapping functions
+function sequence(xs::List{X},h::Hierarchy)::Option{List{Constituent}} where {X<:Id}
 
-    # Dereference the list of ids to get their objects
+    # Dereference the list of ids to get their constituents
     
-    list_rec(nil(),
+    list_rec(Option{List{Constituent}},nil(Constituent),
              (hd,tl,rec)->obind(fnd(hd,h),
                                 c->obind(rec,l->cons(c,l))),
              xs)
 end
 
-function sequence(x::Id,h::Hierarchy)::Option{List}
+function sequence(x::Id,h::Hierarchy)
 
     # Dereference the particles of a constituent
 
@@ -336,7 +337,10 @@ end
 
 sequence(x,m::Module) = sequence(x,m.__data__)
 
-# REFERENCE IMPLEMENTATION
+
+
+
+# REFERENCE IMPLEMENTATION MACRO
 
 macro Reference(Id,SUBS=[])
     
@@ -491,9 +495,15 @@ macro Reference(Id,SUBS=[])
         end)
 end
 
+
+
+# META OPERATIONS
+
 function isdatasource(m::Module)
     isdefined(m,:__data__) && m.__data__ isa Hierarchy
 end
+
+
 
 
 # VIEWPOINTS
@@ -594,7 +604,6 @@ thread(b::Viewpoint,t::Viewpoint) = ThreadedViewpoint(b,t)
 diff(v::Viewpoint{T}) where T = compose(link(v,delay(v,1)),(x,y)->x-y)
 
 # isdiffable(v::Viewpoint{T}) where T = TODO : how to check whether T has a "-"
-
 
 
 function vp_map(v::Viewpoint{T},s::Vector)::List{Option{T}} where T
