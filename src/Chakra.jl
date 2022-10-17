@@ -168,7 +168,7 @@ end
 
 function geta(a::Attribute{N,T},
               c::Constituent)::Option{T} where {N,T}
-
+    
     # forall a::A, Constituent -> option (typ a)
 
     Error(geta,a,c,Option{T})
