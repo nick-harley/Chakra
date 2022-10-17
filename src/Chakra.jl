@@ -231,7 +231,7 @@ function fnd(x::Id,
 
     # fnd : Id -> Hierarchy -> option Constituent
 
-    Error(x,h,Option{Constituent})
+    Error(fnd,x,h,Option{Constituent})
 end
 
 function peek(h::Hierarchy)::Option{Pair{Id,Constituent}}
