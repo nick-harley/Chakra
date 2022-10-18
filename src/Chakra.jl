@@ -104,20 +104,31 @@ abstract type Property{p,T} end
 
 
 
-# GLOBAL ATTRIBUTES AND PROPERTIES
+# GLOBAL ATTRIBUTES
 
 function __attributes__(::Val{n})::Attribute{n} where n
-    error("Name $n is not defined globally.")
+    error("Attribute $n is not defined globally.")
 end
 __attributes__(n::Symbol) = __attributes__(Val{n}())
 __attributes__(n::String) = __attributes__(Symbol(n))
 
 
+
+
+# GLOBAL PROPERTIES
+
 function __properties__(::Val{n})::Property{n} where n
-    error("Name $n is not defined globally.")
+    error("Property $n is not defined globally.")
 end
 __properties__(n::Symbol) = __properties__(Val{n}())
 __properties__(n::String) = __properties__(Symbol(n))
+
+
+struct Description <: Property{:description,String} end
+struct Definition <: Property{:definition,Symbol} end
+
+__properties__(::Val{:description}) = String
+__properties__(::Val{:definition}) = Symbol
 
 
 
