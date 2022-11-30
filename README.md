@@ -1,10 +1,10 @@
 # Chakra
-Julia implementation of CHAKRA (Common Hierarchical Abstract Knowledge Representation for Anything)
+Julia implementation of CHAKRA (Common Hierarchical Abstract Knowledge Representation for Anything) <https://nick-harley.github.io/Chakra/>
 
 Install:
 `pkg> add "https://github.com/nick-harley/Chakra.git"`
 
-Introduction: <https://nick-harley.github.io/Chakra/>
+Specification: <https://nick-harley.github.io/chakra-coq/chakra.html>
 
 Tutorial Notebooks:
 
