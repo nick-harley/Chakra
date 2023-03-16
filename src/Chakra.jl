@@ -563,11 +563,11 @@ struct DerivedViewpoint{T} <: Viewpoint{T}
     modifier::Function
     returntypes::Vector{DataType}
     DerivedViewpoint(v::Viewpoint,f::Function) = begin
-        t = Base._return_type(f,Tuple(v.returntypes))
+        t = Base._return_type(f,Tuple{v.returntypes...})
         if t == Union{}
             error("Type mismatch: The function $f is not composable with the viewpoint $v")
         end
-        new{t}(v,f)
+        new{t}(v,f,[t])
     end
 end
 
