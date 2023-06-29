@@ -614,6 +614,8 @@ thread(b::Viewpoint,t::Viewpoint) = ThreadedViewpoint(b,t)
 
 diff(v::Viewpoint{T}) where T = compose(link(v,delay(v,1)),(x,y)->x-y)
 
+include("diff-generic.jl")
+
 # isdiffable(v::Viewpoint{T}) where T = TODO : how to check whether T has a "-"
 
 
