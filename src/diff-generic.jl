@@ -1,3 +1,5 @@
+# Function authored by Ardavan Khalij, https://github.com/ArdavanKhalij
+
 function diff(v::Viewpoint{T}, op::String) where T
     if op == "Ratio"
         return compose(link(v,delay(v,1)),(x,y)->y.value/x.value)
