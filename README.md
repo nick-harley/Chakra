@@ -13,3 +13,11 @@ Tutorial Notebooks:
 TODO:
 
 - Integration with JSON-LD and the Chakra ontology <https://github.com/nick-harley/chakra-ontology>
+
+Contributors:
+
+- diff-generic.jl is authored by Ardavan Khalij, https://github.com/ArdavanKhalij
+
+Applications: 
+
+- A knowledge base of for Iranian traditional music: https://github.com/ArdavanKhalij/IranianMusicKnowledgeBase.jl
