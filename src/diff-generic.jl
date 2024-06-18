@@ -4,7 +4,7 @@ Chakra.diff(v::Viewpoint{T}, op::String) where T = apply_diff(v::Viewpoint{T}, o
 
 function apply_diff(v::Viewpoint{T}, op::String) where T
     if op == "Ratio"
-        return compose(link(v,delay(v,1)),(x,y)->y/)
+        return compose(link(v,delay(v,1)),(x,y)->y/x)
     elseif op == "Linear"
         return compose(link(v,delay(v,1)),(x,y)->x-y)
     else
