@@ -305,6 +305,10 @@ setp(p,v,x,h) = obind(fnd(x,h),c->setp(p,v,c))
 # constituent destructors
 pts(x::Id,h) = obind(fnd(x,h),c->pts(c))
 
+geta(a::Symbol,c::Constituent) = geta(__attributes__(a),c)
+
+getp(p::Symbol,c::Constituent) = getp(__properties__(p),c)
+
 geta(a::String,c::Constituent) = geta(__attributes__(a),c)
 
 getp(p::String,c::Constituent) = getp(__properties__(p),c)
