@@ -1,5 +1,7 @@
 module Chakra
 
+version = 2.0
+
 export List
 export nil, cons, isnil, list_rec, gethead, gettail, append, lmap, ljoin, lpush, lpop, lpopn, lpeek, lpeekn
 
