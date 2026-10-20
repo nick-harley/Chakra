@@ -109,7 +109,7 @@ function pts(c::Constituent) end
 function fnd(x::Id,h::Hierarchy) end
 function dom(h::Hierarchy) end
 
-# LIST REPRESENTATION
+# LIST REPRESENTATION OF HIERARCHIES
 
 Node = Prod{Id,Constituent}
 Graph = List{Node}
@@ -374,115 +374,232 @@ stratisfied(h::Union{Hierarchy,Module,Graph}) = all([level(x,h)!=none for x in t
 stratisfied(p::Union{Property,Symbol,String},vs::Vector,h::Union{Hierarchy,Module,Graph}) = all([obind(level(x,h),l->length(vs)<l ? false : hasp(p,x,vs[l],h),false) for x in dom(h)])
 
 
+# OPERATIONS ON HIERARCHIES
+
+abstract type READ{A} end
+
+abstract type CMD{A,B} end
+
+struct APP{B} <: READ{B}
+    name
+    op
+    args
+    APP(F::CMD{A,B},a::A) where {A,B} = new{B}("APP",F.op(a),[F,a])
+end
+
+(R::READ{A})(h::Union{Hierarchy,Module,Graph}) where A = R.op(h)::Option{A}
+
+(K::CMD{A,B})(a::A) where {A,B} = APP(K,a)
+(K::CMD{A,B})(a::A,h::Union{Hierarchy,Module,Graph}) where {A,B} = K(a)(h)
+
 
 # VIEWPOINTS
 
-abstract type Viewpoint{T} end
+abstract type Viewpoint{T} <: CMD{List{Id},T} end
 
-returntype(v::Viewpoint{T}) where T = T
+rt(v::Viewpoint{T}) where T = T
 
-struct AtomicViewpoint{T} <: Viewpoint{T}
-    attribute::Attribute
-    returntypes::List{Type}
-    AtomicViewpoint(a::Attribute{N,T}) where {N,T} = new{T}(a,[T])
-    AtomicViewpoint(a::Symbol) = AtomicViewpoint(__attributes__(a))
-    AtomicViewpoint(a::String) = AtomicViewpoint(__attributes__(a))
-end
+(v::Viewpoint{T})(cs::List{Constituent}) where T = v.op(cs)::Option{T}
 
-function (v::AtomicViewpoint{T})(s::List)::Option{T} where T 
-    obind(lpeek(s), o->geta(v.attribute,o))
-end
-
-struct LinkedViewpoint{T} <: Viewpoint{T}
-    components::List{Viewpoint}
-    returntypes::List{DataType}
-    LinkedViewpoint(v1::Viewpoint,v2::Viewpoint,vs::Viewpoint...) = begin
-        components = [v1,v2,vs...]
-        returntypes = [returntype(c) for c in components]
-        new{Tuple{returntypes...}}(components,returntypes)
-    end
-end
-
-function (v::LinkedViewpoint{T})(s::List)::Option{T} where T
-    res = []
-    for c in v.components
-        val = c(s)
-        if val == none
-            return none
+struct Atomic{T} <: Viewpoint{T}
+    name
+    args
+    rts
+    op
+    Atomic(a::Attribute{N,T}) where {N,T} = begin 
+        name = "Atomic"
+        args = [a]
+        rts = [T]
+        function op(ids::List{Id},h::Union{Hierarchy,Module,Graph})
+            return obind(peeklast(ids),x->geta(a,x,h))
         end
-        push!(res,val)
-    end
-    #print(res)
-    return Tuple(res)
-end
-
-struct DerivedViewpoint{T} <: Viewpoint{T}
-    base::Viewpoint
-    modifier::Function
-    returntypes::Vector{DataType}
-    DerivedViewpoint(v::Viewpoint,f::Function) = begin
-        t = Base._return_type(f,Tuple{v.returntypes...})
-        if t == Union{}
-            error("Type mismatch: The function $f is not composable with the viewpoint $v")
+        function op(cs::List{Constituent})
+            return obind(peeklast(cs),c->geta(a,c))
         end
-        new{t}(v,f,[t])
+        return new{T}(name,args,rts,op)
+    end
+    Atomic(a::Union{Symbol,String}) = Atomic(__attributes__(a))
+end
+
+struct Linked{T} <: Viewpoint{T}
+    name
+    args
+    rts
+    op
+    Linked(v1::Viewpoint,v2::Viewpoint,vs::Viewpoint...) = begin
+        name = "Linked"
+        args = [v1,v2,vs...]
+        rts = rt.([v1,v2,vs...])
+        function op(ids::List{Id},h::Union{Hierarchy,Module,Graph})
+            res = [v(ids,h) for v in args]
+            none in res && return none
+            return Tuple(res)
+        end
+        function op(cs::List{Constituent})
+            res = [v(cs) for v in args]
+            none in res && return none
+            return Tuple(res)
+        end
+        new{Tuple{rts...}}(name,args,rts,op)
     end
 end
 
-function (v::DerivedViewpoint{T})(s::Vector)::Option{T} where T
-    n = length(v.base.returntypes)
-    if n == 1
-        obind(v.base(s),(x)->v.modifier(x))
+struct Derived{T} <: Viewpoint{T}
+    name
+    args
+    rts
+    op
+    Derived(v::Viewpoint,f::Function) = begin
+        name = "Derived"
+        args = [v,string(f)]
+        T = Base._return_type(f,Tuple{v.rts...})
+        T == Union{} && error("Cannot compose $f with $v .")
+        rts = [T]
+        function op(ids::List{Id},h::Union{Hierarchy,Module,Graph})
+            n = length(v.rts)
+            n == 1 ? obind(v(ids,h),f) : obind(v(ids,h),x->f(x...))
+        end
+        function op(cs::List{Constituent})
+            n = length(v.rts)
+            n == 1 ? obind(v(cs),f) : obind(v(cs),x->f(x...))
+        end
+        new{T}(name,args,rts,op)
     end
-    obind(v.base(s),(x)->v.modifier(x...))
 end
 
-struct DelayedViewpoint{T} <: Viewpoint{T}
-    base::Viewpoint{T}
-    lag::Int64
+struct Delayed{T} <: Viewpoint{T}
+    name
+    args
+    rts
+    op
+    Delayed(v::Viewpoint{T},l::Int) where T = begin
+        name = "Delayed"
+        args = [v,l]
+        rts = v.rts
+        function op(ids::List{Id},h::Union{Hierarchy,Module,Graph})
+            return v(droplast(ids,l),h)
+        end
+        function op(cs::List{Constituent})
+            return v(droplast(cs,l))
+        end
+        return new{T}(name,args,rts,op)
+    end
 end
 
-function (v::DelayedViewpoint{T})(s::Vector)::Option{T} where T 
-    v.base(lpopn(s,v.lag))
+struct Threaded{T} <: Viewpoint{T}
+    name
+    args
+    op
+    rts
+    Threaded(base::Viewpoint{T},test::Viewpoint{Bool}) where T = begin
+        name = "Threaded"
+        args = [base,test]
+        rts = base.rts
+        function op(ids::List{Id},h::Union{Hierarchy,Module,Graph})
+            return obind(test(ids,h),b-> b ? base(ids,h) : none)
+        end
+        function op(cs::List{Constituent})
+            return obind(test(cs),b-> b ? base(cs) : none)
+        end
+        return new{T}(name,args,rts,op)
+    end
 end
 
-struct ThreadedViewpoint{T} <: Viewpoint{T}
-    base::Viewpoint{T}
-    test::Viewpoint{Bool}
+struct Position <: Viewpoint{Int}
+    name
+    args
+    rts
+    op
+    Position() = begin
+        name = "Position"
+        args = []
+        rts = [Int]
+        function op(ids::List{Id},h::Union{Hierarchy,Module,Graph})
+            return length(ids)
+        end
+        function op(cs::List{Constituent})
+            return length(cs)
+        end
+        return new(name,args,rts,op)
+    end
 end
 
-function (v::ThreadedViewpoint{T})(s::Vector)::Option{T} where T
-    v.test(s) ? v.base(s) : none
+struct Since <: Viewpoint{Int}
+    name
+    args
+    rts
+    op
+    Since(v::Viewpoint{Bool}) = begin
+        name = "Since"
+        args = [v]
+        rts = [Int]
+        function op(ids::List{Id},h::Union{Hierarchy,Module,Graph})
+            loc = findlast(vpmap(v,ids,h))
+            loc == nothing && return length(ids)
+            return length(ids)-loc
+        end
+        function op(cs::List{Constituent}})
+            loc = findlast(vpmap(v,cs))
+            loc == nothing && return length(cs)
+            return length(cs)-loc
+        end
+        return new(name,args,rts,op)
+    end
 end
 
+# VIEWPOINT CONSTRUCTOR INTERFACE
 
-# Viewpoint constructor interface
+export vp
 
-vp(x::Attribute) = AtomicViewpoint(x)
+vp(x::Attribute) = Atomic(x)
 
-link(v1::Viewpoint,v2::Viewpoint,vs::Viewpoint...) = LinkedViewpoint(v1,v2,vs...)
+export atomic
 
-compose(v::Viewpoint,f::Function) = DerivedViewpoint(v,f)
+atomic(x::Union{Attribute,Symbol,String}) = Atomic(x)
 
-delay(v::Viewpoint,l::Int) = DelayedViewpoint(v,l)
+export linked
 
-thread(b::Viewpoint,t::Viewpoint) = ThreadedViewpoint(b,t)
+link(v1::Viewpoint,v2::Viewpoint,vs::Viewpoint...) = Linked(v1,v2,vs...)
 
-# Additional viewpoint constructors
+export compose
 
-diff(v::Viewpoint{T}) where T = compose(link(v,delay(v,1)),(x,y)->x-y)
+compose(v::Viewpoint,f::Function) = Derived(v,f)
 
-include("diff-generic.jl")
+export delay
 
-# isdiffable(v::Viewpoint{T}) where T = TODO : how to check whether T has a "-"
+delay(v::Viewpoint,l::Int) = Delayed(v,l)
+
+export thread
+
+thread(b::Viewpoint,t::Viewpoint) = Threaded(b,t)
+
+export position
+
+position() = Position()
+
+export since
+
+since(v::Viewpoint) = Since(v)
+
+# DIFFERENTIATE VIEWPOINTS
+
+export diff, difflin, diffrat
+
+diff(v::Viewpoint, op::Function) = compose(link(v,delay(v,1)),op)
+difflin(v::Viewpoint) = diff(v,(x,y)->x-y)
+diffrat(v::Viewpoint) = diff(v,(x,y)->x/y)
+diff(v::Viewpoint) = difflin(v)
 
 
-function vp_map(v::Viewpoint{T},s::Vector)::List{Option{T}} where T
+# MAP VIEWPOINTS OVER A SEQUENCE
 
-    # Maps a viewpoint of a sequence
+export vpmap
 
-    return [v(s[1:n]) for n in 1:length(s)]
-end
+vpmap(v::Viewpoint{T},cs::List{Constituent}) where T = @views Option{T}[v(cs[1:n]) for n in 1:length(cs)]
+vpmap(v::Viewpoint{T},ids::List{Id},h::Union{Hierarchy,Module,Graph}) where T = @views Option{T}[v(ids[1:n],h) for n in 1:length(ids)]
+
+# keep backwards compatibility
+vp_map = vpmap
 
 
 
