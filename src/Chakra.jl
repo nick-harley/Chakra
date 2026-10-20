@@ -589,11 +589,25 @@ diff(v::Viewpoint, op::Function) = compose(link(v,delay(v,1)),op)
 difflin(v::Viewpoint) = diff(v,(x,y)->x-y)
 diffrat(v::Viewpoint) = diff(v,(x,y)->x/y)
 diff(v::Viewpoint) = difflin(v)
+diff(v::Viewpoint,s::String) = begin
+    if s == "Ratio"
+        return diffrat(v)
+    elseif op == "Linear"
+        return difflin(v)
+    else
+        println("Error: Operator name is not available. You can take a look to the list of available operators.")
+        println("Helper")
+        println("------------------")
+        println("2- Ratio")
+        println("3- Linear")
+        println("------------------")
+    end
+end
 
 
 # MAP VIEWPOINTS OVER A SEQUENCE
 
-export vpmap
+export vpmap, vp_map
 
 vpmap(v::Viewpoint{T},cs::List{Constituent}) where T = @views Option{T}[v(cs[1:n]) for n in 1:length(cs)]
 vpmap(v::Viewpoint{T},ids::List{Id},h::Union{Hierarchy,Module,Graph}) where T = @views Option{T}[v(ids[1:n],h) for n in 1:length(ids)]
