@@ -191,6 +191,7 @@ cts(h::Graph) = h::Vector{Pair{Id,Constituent}}
 export mem
 
 mem(x::Id,d::List{Id}) = x in d
+mem(xs::List{Id},d::List{Id}) = all([mem(x,d) for x in xs])
 mem(x::Id,h::Union{Hierarchy,Module,Graph}) = mem(x,dom(h))
 mem(xs::List{Id},h::Union{Hierarchy,Module,Graph}) = all([mem(x,h) for x in xs])
 
