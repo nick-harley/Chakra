@@ -1,3 +1,8 @@
+"""
+
+# Chakra Version 2.0
+
+"""
 module Chakra
 
 # OPTION TYPE
