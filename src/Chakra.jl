@@ -1,94 +1,70 @@
 module Chakra
 
-version = 2.0
+# OPTION TYPE
 
-export List
-export nil, cons, isnil, list_rec, gethead, gettail, append, lmap, ljoin, lpush, lpop, lpopn, lpeek, lpeekn
-
-
-export Option
-export none, option_rec, omap, obind
-
-
-export agg, pts, geta, seta, getp, setp, emp, ins, rmv, pop, peek, fnd, isemp, mem, dom, cts
-export sequence
-
-
-export Viewpoint
-export vp, link, compose, delay, thread, diff, vp_map
-
-
-# OPTION
+export none, Option, obind
 
 struct None end
 none = None()
-some(x::A) where A = a
+Base.show(io::IO,::None) = print(io,"none")
 
-Option{A} = Union{A,None}
+Option{X} = Union{X,None}
 
-function option_rec(pnone,psome::Function,x::Option{A}) where A
-    x isa None ? pnone : psome(x)
+obind(::None,f::Function,v) = v
+obind(::None,f::Function) = none
+obind(x,f::Function,v) = f(x)
+obind(x,f::Function) = f(x)
+
+# PRODUCT TYPE
+
+Prod{X,Y} = Pair{x,y} where {x<:X,y<:Y}
+
+# LIST TYPE
+
+List{X} = AbstractVector{x} where {x<:X}
+
+export peeklast
+
+peeklast(l::List{T}) where T = isempty(l) ? none : l[end]
+
+export peekfirst 
+
+peekfirst(l::List{T}) where T = isempty(l) ? none : l[1]
+
+export droplast
+
+droplast(l::List{T},n::Int=1) where T = @views n<length(l) ? l[1:end-n] : l[1:0]
+
+export dropfirst
+
+dropfirst(l::List{T},n::Int=1) where T = @views n<length(l) ? l[1+n:end] : T[]
+
+export pos
+
+pos(x::T,l::List{T}) where T = Base.get(findall(==(x),l),1,none)
+
+export trimfront
+
+trimfront(l::List{T},n::Int) where T = @views n>length(l) ? l : l[end-n+1:end]
+
+export trimback
+
+trimback(l::List{T},n::Int) where T = @views n>length(l) ? l : l[1:n]
+
+export nth
+
+nth(l::List{T},n::Int) where T = Base.get(l,n,none)
+
+export opmap
+
+opmap(B::Type,f::Function,l::List) = begin
+    isempty(l) && return B[]
+    h = f(l[1])
+    h == none && return none
+    t = @views opmap(B,f,l[2:end])
+    t == none && return none
+    return B[h,t...]
 end
-
-omap(f::Function,x::Option{A}) where A = option_rec(none,f,x)
-
-obind(x::Option{A},f::Function) where A = option_rec(none,f,x)
-
-
-
-
-
-
-
-# LIST
-
-List{T} = Vector{T}
-
-nil(::Type{T}) where T = T[]
-nil() = Any[]
-cons(h::T,t::List{T}) where T = T[h,t...]
-isnil(l::List) = isempty(l)
-
-function list_rec(::Type{T},pnil::T,pcons::Function,x::Vector{E})::T where {T,E} 
-    function F(l)
-        isnil(l) ? pnil : pcons(l[1],l[2:end],F(l[2:end]))
-    end
-    return F(x)
-end
-
-function gethead(l::List{A})::Option{A} where A 
-    list_rec(Option{A},none,(h,t,r)->h,l)
-end
-function gettail(l::List{A})::List{A} where A
-    list_rec(List{A},nil(A),(h,t,r)->t,l)
-end
-function append(l1::List{A},l2::List{A})::List{A} where A
-    list_rec(List{A},l2,(h,t,r)->cons(h,r),l1)
-end
-function lmap(f::Function,l::List{A})::List{B} where {A,B}
-    list_rec(List{B},nil(B),(h,t,r)->cons(f(h),r),l)
-end
-function ljoin(ll::List{List{A}})::List{A} where A
-    list_rec(List{A},nil(A),(h,t,r)->append(h,r),ll)
-end
-function lpush(l::List{A},x::A)::List{A} where A
-    list_rec(List{A},cons(x,nil(A)),(h,t,r)->cons(h,r),l)
-end
-function lpop(l::List{A})::List{A} where A
-    list_rec(List{A},nil(A),(h,t,r)->isnil(t) ? r : cons(h,r),l)
-end
-function lpopn(l::List{A},n::Int)::List{A} where A
-    n <= 0 ? l : lpopn(lpop(l),n-1)
-end
-function lpeek(l::List{A})::Option{A} where A
-    list_rec(Option{A},none,(h,t,r)->isnil(t) ? h : r,l)
-end
-function lpeekn(l::List{A},n::Int)::Option{A} where A
-    lpeek(lpopn(l,n))
-end
-
-
-
 
 
 # ABSTRACT TYPES
@@ -99,427 +75,303 @@ abstract type Constituent end
 
 abstract type Hierarchy end
 
-abstract type Attribute{a,T} end
+abstract type Attribute{N,T} end
 
-abstract type Property{p,T} end
+abstract type Property{N,T} end
 
 
+# ATTRIBUTES
 
+__attributes__(::Val{N}) where N = error("Attribute $N is not defined globally.")
+__attributes__(N::Symbol) = __attributes__(Val{N}())
+__attributes__(N::String) = __attributes__(Symbol(N))
 
-# GLOBAL ATTRIBUTES
+# PROPERTIES
 
-function __attributes__(::Val{n})::Attribute{n} where n
-    error("Attribute $n is not defined globally.")
-end
-__attributes__(n::Symbol) = __attributes__(Val{n}())
-__attributes__(n::String) = __attributes__(Symbol(n))
+__properties__(::Val{N}) where N = error("Property $N is not defined globally.")
+__properties__(N::Symbol) = __properties__(Val{N}())
+__properties__(N::String) = __properties__(Symbol(N))
 
 
+#struct Description <: Property{:description,String} end
+#__properties__(::Val{:description}) = String
 
+#struct Definition <: Property{:definition,Symbol} end
+#__properties__(::Val{:definition}) = Symbol
 
-# GLOBAL PROPERTIES
+# ABSTRACT FUNCTIONS
 
-function __properties__(::Val{n})::Property{n} where n
-    error("Property $n is not defined globally.")
-end
-__properties__(n::Symbol) = __properties__(Val{n}())
-__properties__(n::String) = __properties__(Symbol(n))
+export geta, getp, pts, fnd, dom
 
+function geta(::Attribute,c::Constituent) end
+function getp(::Property,c::Constituent) end
+function pts(c::Constituent) end
+function fnd(x::Id,h::Hierarchy) end
+function dom(h::Hierarchy) end
 
-struct Description <: Property{:description,String} end
-struct Definition <: Property{:definition,Symbol} end
+# LIST REPRESENTATION
 
-__properties__(::Val{:description}) = String
-__properties__(::Val{:definition}) = Symbol
+Node = Prod{Id,Constituent}
+Graph = List{Node}
 
+# ADDITIONAL METHODS FOR THE ABSTRACT FUNCTIONS
 
+geta(n::Union{Symbol,String},c::Constituent) = geta(__attributes__(n),c)
+geta(a::Union{Attribute,Symbol,String},x::Id,h::Union{Hierarchy,Module,Graph}) = obind(fnd(x,h),c->geta(a,c))
 
+getp(n::Union{Symbol,String},c::Constituent) = getp(__properties__(n),c)
+getp(p::Union{Property,Symbol,String},x::Id,h::Union{Hierarchy,Module,Graph}) = obind(fnd(x,h),c->getp(p,c))
 
-# ERROR FUNCTION        
+pts(x::Id,h::Union{Hierarchy,Module,Graph}) = obind(fnd(x,h),pts)
 
-function Error(name,TS...)
-    type_string = string(join(string.(typeof.(TS[1:end-1]))," -> ")," -> ",TS[end])
-    error(string("No method implementation of $name : ", type_string, ". \n $(methods(name))"))
-end
-
-
-
-
-# ABSTRACT OPERTIONS
-
-
-## Constituent constructors 
-
-function agg(ps::List{T})::Constituent where {T<:Id}
-
-    # agg : list Id -> Constituent
-
-    Error(agg,ps,Constituent)
-
-end 
-
-function seta(a::Attribute{N,T},
-              v::T,
-              c::Constituent)::Constituent where {N,T}
-
-    # forall a::A, typ a -> Constituent -> Constituent
-
-    Error(seta,a,v,c,Constituent)
-end
-
-function setp(p::Property{N,T},
-              v::T,
-              c::Constituent)::Constituent where {N,T}
-
-    # forall p::P, T -> Constituent -> Constituent
-
-    Error(setp,p,v,c,Constituent)
-end
-
-
-## Constituent destructors
-
-function geta(a::Attribute{N,T},
-              c::Constituent)::Option{T} where {N,T}
-    
-    # forall a::A, Constituent -> option (typ a)
-
-    Error(geta,a,c,Option{T})
-end
-
-function getp(p::Property{N,T},
-              c::Constituent)::Option{T} where {N,T}
-
-    # forall p::P, Constituent -> option (typ p)
-
-    Error(getp,p,c,Option{T})
-end
-
-function pts(c::Constituent)::List{Id}
-    
-    # pts : Constituent -> list Id
-
-    Error(pts,c,List{Id})
-end
-
-
-## Hierarchy constructors
-
-function emp(::Type{Hierarchy})::Hierarchy
-
-    # emp : H
-
-    Error(emp,Hierarchy,Hierarchy)
-end
-
-function ins(x::Id,
-             c::Constituent,
-             h::Hierarchy)::Hierarchy
-
-    # ins : Id -> Constituent -> Hierarchy -> Hierarchy
-
-    Error(ins,x,c,h,Hierarchy)
-end 
-
-function rmv(x::Id,
-             h::Hierarchy)::Hierarchy
-
-    # rmv : Id -> H -> H
-
-    Error(rmv,x,h,Hierarchy)
-end
-
-function pop(h::Hierarchy)::Hierarchy
-
-    # pop : Hierarchy -> Hierarchy
-
-    Error(pop,h,Hierarchy)
-end
-
-
-## Hierarchy destructors
-
-function fnd(x::Id,
-             h::Hierarchy)::Option{Constituent}
-
-    # fnd : Id -> Hierarchy -> option Constituent
-
-    Error(fnd,x,h,Option{Constituent})
-end
-
-function peek(h::Hierarchy)::Option{Pair{Id,Constituent}}
-
-    # peek : Hierarchy -> option (Id * Constituent)
-
-    Error(peek,h,Option{Pair{Id,Constituent}})
-end
-
-function cts(h::Hierarchy)::List{Pair{Id,Constituent}}
-
-    # cts : Hierarchy -> list (Id * C)
-
-    Error(cts,h,List{Pair{Id,Constituent}})
-end
-
-function dom(h::Hierarchy)::List{Id}
-    
-    # dom : Hierarchy -> list Id
-
-    Error(dom,h,List{Id})
-end
-
-
-## Boolean tests
-
-function isemp(h::Hierarchy)::Bool
-    
-    # isemp : Hierarchy -> bool 
-
-    Error(isemp,h,Bool)
-end
-
-function mem(x::Id,
-             h::Hierarchy)::Bool
-    
-    # mem : Id -> Hierarchy -> bool
-
-    Error(mem,x,h,Bool)
-end
-
-
-
-# ADDITIONAL METHODS
-
-
-# constituent constructors
-agg(::Type{T}) where {T<:Id} = agg(T[])
-
-agg(ps::Vector{Id}) = agg(Union{typeof.(ps)...}[ps...])
-
-seta(a::String,v,c::Constituent) = seta(__attributes__(a),v,c)
-
-setp(p::String,v,c::Constituent) = setp(__properties__(p),v,c)
-
-seta(a,v,x,h) = obind(fnd(x,h),c->seta(a,v,c))
-
-setp(p,v,x,h) = obind(fnd(x,h),c->setp(p,v,c))
-
-# constituent destructors
-pts(x::Id,h) = obind(fnd(x,h),c->pts(c))
-
-geta(a::Symbol,c::Constituent) = geta(__attributes__(a),c)
-
-getp(p::Symbol,c::Constituent) = getp(__properties__(p),c)
-
-geta(a::String,c::Constituent) = geta(__attributes__(a),c)
-
-getp(p::String,c::Constituent) = getp(__properties__(p),c)
-
-geta(a,x::Id,h) = obind(fnd(x,h),c->geta(a,c))
-
-getp(p,x::Id,h) = obing(fnd(x,h),c->getp(p,c))
-
-# hierarchy destructors
 fnd(x::Id,m::Module) = fnd(x,m.__data__)
+fnd(x::Id,h::Graph) = obind(pos(x,dom(h)),n->last(h[n]))
+fnd(xs::List{Id},h::Union{Hierarchy,Module,Graph}) = Option{Constituent}[fnd(x,h) for x in xs]
 
-dom(m::Module) = dom(m.__data__)
+dom(h::Module) = dom(h.__data__)
+dom(h::Graph) = first.(h)
 
-cts(m::Module) = cts(m.__data__)
+# ADDITIONAL FUNCTIONS
 
-peek(m::Module) = peek(m.__data__)
+export fnd!
 
-# boolean tests
-mem(x,m::Module) = mem(x,m.__data__)
+fnd!(x::Id,h::Union{Hierarchy,Module,Graph}) = obind(fnd(x,h),c->c,error("$x not found."))
+fnd!(xs::List{Id},h::Union{Hierarchy,Module,Graph}) = Constituent[fnd(x,h) for x in xs if mem(x,h)]
 
-isemp(m::Module) = isemp(m.__data__)
+export sequence
 
-# mapping functions
-function sequence(xs::List{X},h::Hierarchy)::Option{List{Constituent}} where {X<:Id}
+sequence(xs::List{Id},h::Union{Hierarchy,Module,Graph}) = fnd(xs,h)
 
-    # Dereference the list of ids to get their constituents
-    
-    list_rec(Option{List{Constituent}},nil(Constituent),
-             (hd,tl,rec)->obind(fnd(hd,h),
-                                c->obind(rec,l->cons(c,l))),
-             xs)
+export sequence!
+
+sequence!(xs::List{Id},h::Union{Hierarchy,Module,Graph}) = fnd!(xs,h)
+
+# LENGTH OF A HIERARCHY
+Base.length(h::Union{Hierarchy,Module}) = length(dom(h))
+
+# TEST IF HIERARCHY IS EMPTY
+Base.isempty(h::Union{Hierarchy,Module}) = isempty(dom(h))
+
+export pos
+
+pos(x::Id,h::Union{Hierarchy,Module,Graph}) = pos(x,dom(h))
+
+export startingat
+
+startingat(n::Int,h::Graph) = @views h[n:end]
+startingat(x::Id,h::Graph) = obind(pos(x,h),n->startingat(n,h),Node[])
+startingat(x::Union{Int,Id},h::Union{Hierarchy,Module}) = startingat(x,cts(h))
+
+export endingat
+
+endingat(n::Int,h::Graph) = @views h[1:n]
+endingat(x::Id,h::Graph) = obind(pos(x,h),n->endingat(n,h),Node[])
+endingat(x::Union{Int,Id},h::Union{Hierarchy,Module}) = endingat(x,cts(h))
+
+export level
+
+level(x::Id,h::Union{Hierarchy,Module,Graph}) = begin
+    !mem(x,h) && return none
+    ps = pts(x,h)
+    isempty(ps) && return 1
+    plevs = unique([level(p,h) for p in ps])
+    length(plevs) != 1 && return none
+    return plevs[1]+1
 end
 
-function sequence(x::Id,h::Hierarchy)
+export isdatasource
 
-    # Dereference the particles of a constituent
+isdatasource(m::Module) = isdefined(m,:__data__) && m.__data__ isa Hierarchy
 
-    obind(pts(x,h),ps->sequence(ps,h))
-    
+export cts
+
+cts(h::Union{Hierarchy,Module}) = Pair{Id,Constituent}[Pair(x,fnd(x,h)) for x in dom(h)]
+cts(h::Graph) = h::Vector{Pair{Id,Constituent}}
+
+export mem
+
+mem(x::Id,d::List{Id}) = x in d
+mem(x::Id,h::Union{Hierarchy,Module,Graph}) = mem(x,dom(h))
+mem(xs::List{Id},h::Union{Hierarchy,Module,Graph}) = all([mem(x,h) for x in xs])
+
+export subparts
+
+subparts(x::Id,h::Graph) = begin
+    isempty(h) && return Id[]
+    c = fnd(x,h)
+    c == none && return Id[]
+    res = Id[x]
+    ps = pts(c)
+    [union!(res,subparts(p,endingat(p,h))) for p in ps]
+    return sort!(res, by = x -> pos(x,h))
 end
 
-sequence(x,m::Module) = sequence(x,m.__data__)
-
-
-
-
-# REFERENCE IMPLEMENTATION MACRO
-
-macro Reference(Id,SUBS=[])
-    
-    esc(quote
-            
-            struct Id <: Chakra.Id
-                value::($Id)
-            end
-
-            __IDS__ = Union{Id,[s.__IDS__ for s in $SUBS]...}
-            
-            As = Dict{Symbol,Any}
-            Ps = Dict{Symbol,Any}
-            Parts = List{__IDS__}
-            
-            struct Constituent <: Chakra.Constituent
-                attributes::As
-                properties::Ps
-                particles::Parts
-            end
-
-            __CS__ = Union{Constituent,[s.__CS__ for s in $SUBS]...}
-
-            using DataStructures
-
-            Cs = OrderedDict{Id,Constituent}
-            
-            struct Hierarchy <: Chakra.Hierarchy
-                constituents::Cs
-            end
-
-            mod = @__MODULE__
-
-            __attributes__(::Val{a}) where a =
-                error("Attribute $a is not defined in module $mod.")
-
-            __attributes__(a::Symbol)::Type = __attributes__(Val{a}())
-
-            struct Attribute{a,T} <: Chakra.Attribute{a,T}
-                Attribute(a::Symbol) = new{a,__attributes__(a)}()
-            end
-
-            macro DefineAttribute(a,T) 
-                esc(quote
-                        __attributes__(::Val{$a}) = $T
-                        g = Symbol(@__MODULE__,".",$a)
-                        Chakra.__attributes__(::Val{g}) = Attribute($a)
-                    end)
-            end
-
-            __properties__(::Val{p}) where p =
-                error("Property $p is not defined in module $mod.")
-
-            __properties__(p::Symbol)::Type = __properties__(Val{p}())
-
-            struct Property{p,T} <: Chakra.Property{p,T}
-                Property(p::Symbol) = new{p,__properties__(p)}()
-            end
-
-            macro DefineProperty(p,T)    
-                esc(quote
-                        mod.__properties__(::Val{$p}) = $T
-                        g = Symbol(mod,".",$p)
-                        Chakra.__properties__(::Val{g}) = Property($p)
-                    end)
-            end
-            
-            Chakra.agg(ps::List{T}) where T<:__IDS__ =
-                Constituent(As(),Ps(),ps)
-
-            Chakra.agg(::Type{Constituent}) = agg(__IDS__[])
-
-            Chakra.seta(::Attribute{a,T},
-                        v::T,
-                        c::Constituent) where {a,T} =
-                            Constituent(As(c.attributes...,a=>v),
-                                        Ps(c.properties),
-                                        c.particles)
-
-            Chakra.seta(a::Symbol,v,c) = Chakra.seta(Attribute(a),v,c)
-            
-            Chakra.setp(::Property{p,T},
-                        v::T,
-                        c::Constituent) where {p,T} =
-                            Constituent(As(c.attributes),
-                                        Ps(c.properties...,p=>v),
-                                        c.particles)
-
-            Chakra.setp(p::Symbol,v,c) = Chakra.setp(Property(p),v,c)
-            
-            Chakra.pts(c::Constituent)::List{__IDS__} =
-                c.particles
-
-            Chakra.geta(::Attribute{a,T},
-                        c::Constituent) where {a,T} =
-                            Base.get(c.attributes,a,none)
-
-            Chakra.geta(a::Symbol,
-                        c::Constituent) =
-                            Chakra.geta(Attribute(a),c)
-            
-            Chakra.getp(::Property{p,T},
-                        c::Constituent) where {p,T} =
-                            Base.get(c.properties,p,none)
-
-            Chakra.getp(p::Symbol,
-                        c::Constituent) =
-                            Chakra.getp(Property(p),c)
-            
-            Chakra.emp(::Type{Hierarchy})::Hierarchy =
-                Hierarchy(Cs())
-
-            Chakra.ins(x::Id,
-                       c::Constituent,
-                       h::Hierarchy)::Hierarchy =
-                           Hierarchy(Cs(h.constituents..., x => c))
-
-            Chakra.rmv(x::Id,
-                       h::Hierarchy)::Hierarchy =
-                           Hierarchy(delete!(Cs(h.constituents),x))
-            
-            Chakra.pop(h::Hierarchy)::Hierarchy =
-                Hierarchy(Cs(collect(h.constituents)[1:end-1]))
-
-            Chakra.fnd(x::Id,
-                       h::Hierarchy)::Option{Constituent} =
-                           Base.get(h.constituents,x,none)
-
-            for S in $SUBS
-                eval(:(Chakra.fnd(x::$S.Id,h::Hierarchy)::$S.Constituent = fnd(x,$S.__data__)))
-            end
-            
-            Chakra.peek(h::Hierarchy)::Option{Pair{__IDS__,__CS__}} =
-                cts(h)[1]
-
-            Chakra.isemp(h::Hierarchy)::Bool =
-                isempty(dom(h))
-
-            Chakra.mem(x::Id,h::Hierarchy)::Bool =
-                haskey(h.constituents,x)
-
-            for S in $SUBS
-                eval(:(Chakra.mem(x::$S.Id,h::Hierarchy)::Bool = mem(x,$S.__data__)))
-            end
-            
-            Chakra.cts(h::Hierarchy)::List{Pair{__IDS__,__CS__}} =
-                vcat(reverse(collect(h.constituents)),[cts(S.__data__) for S in reverse($SUBS)]...)
-
-            Chakra.dom(h::Hierarchy)::List{__IDS__} =
-                vcat(reverse(collect(keys(h.constituents))),[dom(S.__data__) for S in reverse($SUBS)]...)
-
-        end)
+subparts(xs::List{Id},h::Graph) = begin
+    res = Id[]
+    [union!(res,subparts(x,h)) for x in xs]
+    return sort!(res, by = x -> pos(x,h))
 end
 
+subparts(x::Union{Id,List{Id}},h::Union{Hierarchy,Module}) = subparts(x,cts(h))
 
+export superparts
 
-# META OPERATIONS
-
-function isdatasource(m::Module)
-    isdefined(m,:__data__) && m.__data__ isa Hierarchy
+superparts(x::Id,h::Graph) = begin
+    res = Id[]
+    h2 = startingat(x,h)
+    for y in dom(h2)
+        if x in pts(y,h2)
+            push!(res,y)
+            union!(res,superparts(y,h2))
+        end
+    end
+    return sort!(res, by = x->pos(x,h))
 end
 
+superparts(xs::List{Id},h::Graph) = begin
+    res = Id[]
+    [union!(res,superparts(x,h)) for x in xs]
+    return sort!(res, by = x->pos(x,h))
+end
+
+superparts(x::Union{Id,List{Id}},h::Union{Hierarchy,Module}) = superparts(x,cts(h))
+
+export aggregates
+
+aggregates(x::Id,h) = begin 
+    Id[y for y in dom(h) if haspart(y,x,h)]
+end
+
+export top
+
+top(h::Union{Hierarchy,Module,Graph}) = Id[x for x in dom(h) if aggregates(x,h) == []]
+
+export bottom
+
+bottom(h::Union{Hierarchy,Module,Graph}) = Id[x for x in dom(h) if pts(x,h) == []]
+
+export siblings
+
+siblings(x::Id,y::Id,h::Union{Hierarchy,Module}) = begin
+    !haspart(y,x,h) && return none
+    return filter(!=(x),pts(y,h))
+end
+
+export lsiblings
+
+lsiblings(x::Id,y::Id,h::Union{Hierarchy,Module}) = begin
+    ps = pts(y,h)
+    return obind(pos(x,ps),p->ps[1:p-1],none)
+end
+
+export rsiblings
+
+rsiblings(x::Id,y::Id,h::Union{Hierarchy,Module}) = begin
+    ps = pts(y,h)
+    return obind(pos(x,ps),p->ps[p+1:end],none)
+end
+
+export hasa
+
+hasa(a::Union{Property,Symbol,String},c::Constituent,v) = geta(a,c) == v
+hasa(a::Union{Property,Symbol,String},x::Id,v,h::Union{Hierarchy,Module,Graph}) = geta(a,x,h) == v
+hasa(a::Union{Property,Symbol,String},x::Id,h::Union{Hierarchy,Module,Graph}) = geta(a,x,h) != none
+
+export hasp
+
+hasp(p::Union{Property,Symbol,String},c::Constituent,v) = getp(p,c) == v
+hasp(p::Union{Property,Symbol,String},x::Id,v,h::Union{Hierarchy,Module,Graph}) = getp(p,x,h) == v
+hasp(p::Union{Property,Symbol,String},x::Id,h::Union{Hierarchy,Module,Graph}) = getp(p,x,h) != none
+
+export haspart
+
+haspart(x::Id,y::Id,h::Union{Hierarchy,Module,Graph}) = y in pts(x,h)
+
+export ispartof
+
+ispartof(x::Id,y::Id,h::Union{Hierarchy,Module,Graph}) = haspart(y,x,h)
+
+export hassubpart
+
+hassubpart(x,y,h) = y in subparts(x,h)
+
+export issubpartof
+
+issubpartof(x,y,h) = hassubpart(y,x,h)
+
+export incomparable
+
+incomparable(x::Id,y::Id,h::Union{Hierarchy,Module,Graph}) = !(hassubpart(x,y,h) || hassubpart(y,x,h))
+incomparable(ps::List{Id},h::Union{Hierarchy,Module,Graph}) = all([incomparable(ps[i],ps[j],h) for i in 1:length(ps)-1 for j in i+1:length(ps)])
+
+export disjoint
+
+disjoint(l1::Vector,l2::Vector) = intersect(l1,l2) == []
+disjoint(ls::Vector{Vector}) = all([disjoint(ls[i],ls[j]) for i in 1:length(ls)-1 for j in i+1:length(ls)])
+disjoint(x::Id,y::Id,h::Union{Hierarchy,Module,Graph}) = disjoint(subparts(x,h),subparts(y,h))
+disjoint(xs::List{Id},h::Union{Hierarchy,Module,Graph}) = all([disjoint(xs[i],xs[j],h) for i in 1:length(xs)-1 for j in i+1:length(xs)])
+
+export hassibling
+
+hassibling(x,y,z,h) = y in siblings(x,z,h)
+
+export haslsibling
+
+haslsibling(x,y,z,h) = y in lsiblings(x,z,h)
+
+export hasrsibling
+
+hasrsibling(x,y,z,h) = y in rsiblings(x,z,h)
+
+export issiblingof
+
+issiblingof(x,y,z,h) = x in siblings(y,z,h)
+
+export islsiblingof
+
+islsiblingof(x,y,z,h) = x in lsiblings(y,z,h)
+
+export isrsiblingof
+
+isrsiblingof(x,y,z,h) = x in rsiblings(y,z,h)
+
+export wf
+
+wf(x::Id,ps::List{Id},d::List{Id}) = !mem(x,d) && mem(ps,d)
+wf(x::Id,c::Constituent,d::List{Id}) = wf(x,pts(c),d)
+wf(c::Node,d::List{Id}) = wf(c[1],c[2],d)
+wf(c::Node,h::Union{Hierarchy,Module,Graph}) = wf(c,dom(h))
+
+export isdag
+
+isdag(h::Graph) = all([wf(h[i],endingat(i-1,h)) for i in 1:length(h)])
+isdag(h::Union{Hierarchy,Module}) = isdag(cts(h))
+
+export balanced
+
+balanced(x::Id,h::Union{Hierarchy,Module,Graph}) = obind(pts(x,h),ps->incomparable(ps,h),false)
+balanced(h::Union{Hierarchy,Module,Graph}) = all([balanced(x,h) for x in dom(h)])
+
+export istree
+
+istree(x::Id,h::Union{Hierarchy,Module,Graph}) = begin
+    isempty(h) && return false
+    !mem(x,h) && return false
+    ps = pts(x,h)
+    isempty(ps) && return true
+    return all([istree(p,endingat(p,h)) for p in ps]) && disjoint(ps,h) 
+end
+istree(h::Union{Hierarchy,Module,Graph}) = (r = top(h); length(r) == 1 && istree(r[1],h))
+
+export ismultitree
+
+ismultitree(xs::List{Id},h::Union{Hierarchy,Module,Graph}) = mem(xs,h) && all([istree(x,h) for x in xs])
+ismultitree(h::Union{Hierarchy,Module,Graph}) = ismultitree(top(h),h)
+
+export stratisfied
+
+stratisfied(h::Union{Hierarchy,Module,Graph}) = all([level(x,h)!=none for x in top(h)])
+stratisfied(p::Union{Property,Symbol,String},vs::Vector,h::Union{Hierarchy,Module,Graph}) = all([obind(level(x,h),l->length(vs)<l ? false : hasp(p,x,vs[l],h),false) for x in dom(h)])
 
 
 
