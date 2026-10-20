@@ -538,7 +538,7 @@ struct Since <: Viewpoint{Int}
             loc == nothing && return length(ids)
             return length(ids)-loc
         end
-        function op(cs::List{Constituent}})
+        function op(cs::List{Constituent})
             loc = findlast(vpmap(v,cs))
             loc == nothing && return length(cs)
             return length(cs)-loc
