@@ -2,3 +2,6 @@ name = "Chakra"
 uuid = "23337c43-347c-4169-b193-f31a84c326bf"
 authors = ["Nick Harley <nickharley@protonmail.com>"]
 version = "0.1.0"
+
+[deps]
+JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
