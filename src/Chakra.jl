@@ -563,7 +563,7 @@ export atomic
 
 atomic(x::Union{Attribute,Symbol,String}) = Atomic(x)
 
-export linked
+export link
 
 link(v1::Viewpoint,v2::Viewpoint,vs::Viewpoint...) = Linked(v1,v2,vs...)
 
