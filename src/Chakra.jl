@@ -399,6 +399,322 @@ end
 (K::CMD{A,B})(a::A,h::Union{Hierarchy,Module,Graph}) where {A,B} = K(a)(h)
 
 
+export RET
+
+struct RET{A} <: READ{A}
+    name
+    op
+    args
+    RET(v::A) where A = new{A}("RET",_->v,[v])
+end
+
+export BIND
+
+struct BIND{A,B} <: READ{B}
+    name
+    op
+    args
+    BIND(R::READ{A},F::CMD{A,B}) where {A,B} = new{A,B}("BIND",h->F(R(h),h),[R,F])
+end
+
+export FISH
+
+struct FISH{A,B} <: CMD{A,B}
+    name
+    op
+    args
+    FISH(F::CMD{A,B1},G::CMD{B2,C}) where {A,B2,B1<:B2,C} = new{A,C}("FISH",x->h->G(F(x,h),h),[F,G])
+end
+
+BIND(R::READ,KS::CMD...) = BIND(R,FISH(KS...))
+FISH(f::CMD,g::CMD...) = isempty(g) ? f : FISH(f,FISH(g...))
+
+export MAP
+
+struct MAP{A,B} <: CMD{List{A},List{B}}
+    name
+    op
+    args
+    MAP(F::CMD{A,B}) where {A,B} = new{A,B}("MAP",l->h->opmap(B,x->F(x,h),l),[F])
+end
+
+export DOM
+
+struct DOM <: READ{List{Id}}
+    name
+    op
+    args
+    DOM() = new("DOM",h->dom(h),[])
+end
+
+export GETA
+
+struct GETA{N,T} <: CMD{Id,T}
+    name
+    op
+    args
+    GETA(A::Attribute{N,T}) where {N,T} = new{N,T}("GETA",x->h->geta(A,x,h),[A])
+    GETA(N::Union{Symbol,String}) = GETA(__attributes__(N))
+end
+
+export GETP
+
+struct GETP{N,T} <: CMD{Id,T}
+    name
+    op
+    args
+    GETP(P::Property{N,T}) where {N,T} = new{N,T}("GETP",x->h->getp(P,x,h),[P])
+    GETP(N::Union{Symbol,String}) = GETP(__properties__(N))
+end
+
+export PTS
+
+struct PTS <: CMD{Id,List{Id}}
+    name
+    op
+    args
+    PTS() = new("PTS",x->h->pts(x,h),[])
+end
+
+export SUBCS
+
+struct SUBCS <: CMD{Id,List{Id}}
+    name
+    op
+    args
+    SUBCS() = new("SUBCS",c->cs->subparts(c,cs),[])
+end
+
+
+# PREDICATES
+
+abstract type PROP <: READ{Bool} end
+abstract type PRED{T} <: CMD{T,Bool} end
+abstract type REL{A,B} <: CMD{Prod{A,B},Bool} end
+
+# TODO isdag etc
+# TODO lift 
+
+abstract type CPROP <: PRED{Id} end
+abstract type CREL <: REL{Id,Id} end
+abstract type LPROP <: PRED{List{Id}} end
+abstract type LREL <: REL{List{Id},List{Id}} end
+
+export HASA
+
+struct HASA{N,T} <: CPROP
+    name
+    op
+    args
+    HASA(a::Attribute{N,T},v::t) where {N,T,t<:T} = new{N,T}("HASA",x->h->geta(a,x,h)==v,[a,v])
+    HASA(a::Attribute{N,T}) where {N,T} = new{N,T}("HASA",x->h->geta(a,x,h)!= none,[a])
+    HASA(N::Union{Symbol,String},v) = HASA(__attributes__(N),v)
+    HASA(N::Union{Symbol,String}) = HASA(__attributes__(N))
+end
+
+export HASP
+
+struct HASP{N,T} <: CPROP
+    name
+    op
+    args
+    HASP(p::Property{N,T},v::t) where {N,T,t<:T} = new{N,T}("HASP",x->h->getp(p,x,h)==v,[p,v])
+    HASP(p::Property{N,T}) where {N,T} = new{N,T}("HASP",x->h->getp(p,x,h)!=none,[p])
+    HASP(N::Union{Symbol,String},v) = HASP(__properties__(N),v)
+    HASP(N::Union{Symbol,String}) = HASP(__properties__(N))
+end
+
+export PARTS
+
+struct PARTS <: CPROP
+    name
+    op
+    args
+    PARTS(P::LPROP) = new("PARTS",x->h->obind(pts(x,h),ps->P(ps,h)),[P])
+end
+
+export ALL
+
+struct ALL <: LPROP
+    name
+    op
+    args
+    ALL(P::CPROP) = new("ALL",xs->h->all([P(x,h) for x in xs]),[P])
+end
+
+export SOME
+
+struct SOME <: LPROP
+    name
+    op
+    args
+    SOME(P::CPROP) = new("SOME",xs->h->any([P(x,h) for x in xs]),[P])
+end
+
+export NTH
+
+struct NTH <: LPROP
+    name 
+    op
+    args
+    NTH(n::Int,P::CPROP) = new("NTH",xs->h->P(xs[n],h),[n,P])
+end 
+
+export FIRST
+
+struct FIRST <: LPROP
+    name
+    op
+    args
+    FIRST(T::CPROP) = new("FIRST",xs->h->(isempty(ps) ? false : T(first(xs),h)),[T])
+    FIRST(x::Id) = new("FIRST",xs->h->(isempty(xs) ? false : first(xs)==x),[x])
+end
+
+export LAST
+
+struct LAST <: LPROP
+    name
+    op
+    args
+    LAST(T::CPROP) = new("LAST",xs->h->(isempty(ps) ? false : T(last(xs),h)),[T])
+    LAST(x::Id) = new("LAST",xs->h->(isempty(xs) ? false : last(xs)==x),[x])
+end
+
+export NIL
+
+struct NIL <: LPROP
+    name
+    op
+    args
+    NIL() = new("NIL",xs->h->isempty(xs),[])
+end
+
+export CONS
+
+struct CONS <: LPROP
+    name 
+    op 
+    args
+    CONS(C::CPROP,L::LPROP) = new("CONS",xs->h->C(xs[1],h)&& L(xs[2:end],h),[C,L])
+end
+CONS(C::CPROP,CS::CPROP...) = isempty(CS) ? CONS(C,NIL()) : CONS(C,CONS(CS...))
+
+export PAIRWISE
+
+struct PAIRWISE <: LREL
+    name
+    op
+    args
+    PAIRWISE(R::CREL) = begin 
+        function pw(P,h)
+            l1,l2 = P
+            if !isempty(l1)
+                isempty(l2) && return false
+                x,y = l1[1],l2[1]
+                return R((x,y),h) && pw(l1[2:end],l2[2:end],h)
+            end
+            isempty(l2) && return true 
+            return false
+        end
+        new("PAIRWISE",pw,[R])
+    end
+end
+
+export ALLPARTS
+
+ALLPARTS(P::CPROP) = PARTS(ALL(P))
+
+export SOMEPART
+
+SOMEPART(P::CPROP) = PARTS(SOME(P))
+
+export FIRSTPART
+
+FIRSTPART(P::Union{CPROP,Id}) = PARTS(FIRST(P))
+
+export LASTPART
+
+LASTPART(P::Union{CPROP,Id}) = PARTS(LAST(P))
+
+export AND
+
+struct AND <: CPROP
+    name
+    op
+    args
+    AND(f::CMD,g::CMD) = new("AND",x->h->f(x,h)&&g(x,h),[f,g])
+    AND(f::CMD,gs::CMD...) = isempty(gs) ? f : AND(AND(f,gs[1]),gs[2:end]...)
+end
+
+export FILTER
+
+struct FILTER <: CMD{List{Id},List{Id}}
+    name
+    op
+    args
+    FILTER(P::CPROP) = new("FILTER",l->h->Id[x for x in l if P(x,h)],[P])
+end
+
+export SELECT
+
+SELECT(P::CPROP) = BIND(DOM(),FILTER(P))
+
+export PROJ
+
+PROJ(P) = FISH(SUBCS(),FILTER(P))
+
+export SUM
+
+struct SUM <: CMD{List{Number},Number}
+    name
+    op
+    args
+    SUM() = new("SUM",l->_->sum(l),[])
+end
+
+export AVG
+
+struct AVG <: CMD{List{Number},Float64}
+    name
+    op
+    args
+    AVG() = new("AVG",l->_->sum(l)/length(l),[])
+end
+
+
+# SERIALISATION OF QUERIES
+
+export parsedict, loadexpr
+
+using JSON
+
+parsedict(x::Union{JSON.Object,Dict}) = begin
+    op = x["op"]
+    args = x["args"]
+    return eval(Symbol(op))([parsedict(a) for a in args]...)
+end
+parsedict(x) = eval(Meta.parse(x))
+
+loadexpr(fn::String) = parsedict(JSON.parsefile(fn))
+
+export saveexpr
+
+exprtodict(s::String) = "\"$s\""
+exprtodict(x::READ) = Dict(["op"=>x.name,"args"=>[exprtodict(a) for a in x.args]])
+exprtodict(x::CMD) = Dict(["op"=>x.name,"args"=>[exprtodict(a) for a in x.args]])
+exprtodict(x) = string(x)
+
+saveexpr(fn::String,q::Union{READ,CMD}) = begin 
+    D = exprtodict(q)
+    open(fn, "w") do f
+        JSON.print(f, D)
+    end
+    return D
+end
+
+
+
+
 # VIEWPOINTS
 
 abstract type Viewpoint{T} <: CMD{List{Id},T} end
