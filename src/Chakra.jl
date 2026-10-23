@@ -495,8 +495,8 @@ end
 struct Threaded{T} <: Viewpoint{T}
     name
     args
-    op
     rts
+    op
     Threaded(base::Viewpoint{T},test::Viewpoint{Bool}) where T = begin
         name = "Threaded"
         args = [base,test]
